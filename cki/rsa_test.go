@@ -28,7 +28,7 @@ func TestCertFromRSA(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, cert.Algo, RSA2048SHA384)
+	assert.Equal(t, cert.Algo, RSA2048)
 	assert.Equal(t, cert.Version, uint8(1))
 
 	err = cert.verifySignatureMatching(cert.ID, pub)

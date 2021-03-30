@@ -55,8 +55,8 @@ func parseRSAPublicKey(a Algorithm, d []byte) (*RSAPublicKey, error) {
 	return &RSAPublicKey{*pubk}, nil
 }
 
-//parseRSAPrivateKey decodes an exported RSA private key
-func parseRSAPrivateKey(k *ocsPrivateKey) (*RSAPrivateKey, error) {
+//ParseRSAPrivateKey decodes an exported RSA private key
+func ParseRSAPrivateKey(k *ocsPrivateKey) (*RSAPrivateKey, error) {
 	privk, err := x509.ParsePKCS1PrivateKey(k.Key)
 	if err != nil {
 		return nil, err

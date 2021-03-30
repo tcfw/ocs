@@ -18,7 +18,7 @@ func TestECPublicKeyMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pubrb, err := parsePublicKey(a, b)
+	pubrb, err := ParsePublicKey(a, b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestEd25519PublicKeyMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pubrb, err := parsePublicKey(ED25519, b)
+	pubrb, err := ParsePublicKey(ED25519, b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestRSAPublicKeyMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pubrb, err := parsePublicKey(RSA2048SHA384, b)
+	pubrb, err := ParsePublicKey(RSA2048, b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,13 +65,13 @@ func TestRSAPublicKeyMarshal(t *testing.T) {
 }
 
 func TestUnknownPublicKeyParse(t *testing.T) {
-	pubrb, err := parsePublicKey(UnknownAlgo, []byte(`abc`))
+	pubrb, err := ParsePublicKey(UnknownAlgo, []byte(`abc`))
 	assert.Error(t, err, "empty public key")
 	assert.Nil(t, pubrb)
 }
 
 func TestEmptyPublicKeyMarshal(t *testing.T) {
-	pubrb, err := parsePublicKey(RSA2048SHA384, []byte{})
+	pubrb, err := ParsePublicKey(RSA2048, []byte{})
 	assert.Error(t, err, "empty public key")
 	assert.Nil(t, pubrb)
 }

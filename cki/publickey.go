@@ -2,7 +2,8 @@ package cki
 
 import "errors"
 
-func parsePublicKey(a Algorithm, d []byte) (PublicKey, error) {
+//ParsePublicKey unmarshals a public key
+func ParsePublicKey(a Algorithm, d []byte) (PublicKey, error) {
 	if len(d) == 0 {
 		return nil, errors.New("empty public key")
 	}
@@ -12,7 +13,7 @@ func parsePublicKey(a Algorithm, d []byte) (PublicKey, error) {
 		return parseED25519PublicKey(a, d)
 	case ECDSAsecp256r1, ECDSAsecp384r1:
 		return parseECPublicKey(a, d)
-	case RSA2048SHA384, RSA4096SHA384:
+	case RSA2048, RSA4096:
 		return parseRSAPublicKey(a, d)
 	default:
 		return nil, ErrUnknownKeyAlgorithm

@@ -1,70 +1,13 @@
 package cki
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-type inmemCertPool struct {
-	certStore  map[string]*Certificate
-	trustStore map[string]TrustLevel
-	revoked    map[string]bool
-}
-
-func newInMemCertPool() *inmemCertPool {
-	return &inmemCertPool{
-		certStore:  make(map[string]*Certificate),
-		trustStore: make(map[string]TrustLevel),
-		revoked:    make(map[string]bool),
-	}
-}
-
-func (incp *inmemCertPool) Reset() {
-	incp.certStore = make(map[string]*Certificate)
-	incp.trustStore = make(map[string]TrustLevel)
-	incp.revoked = make(map[string]bool)
-}
-
-func (incp *inmemCertPool) AddCert(c *Certificate, t TrustLevel) {
-	incp.certStore[string(c.ID)] = c
-	incp.trustStore[string(c.ID)] = t
-}
-
-func (incp *inmemCertPool) FindCertificate(id, _ []byte) (*Certificate, error) {
-	cert, ok := incp.certStore[string(id)]
-	if !ok {
-		return nil, errors.New("not found")
-	}
-
-	return cert, nil
-}
-
-func (incp *inmemCertPool) TrustLevel(id []byte) (TrustLevel, error) {
-	tl, ok := incp.trustStore[string(id)]
-	if !ok {
-		return UnknownTrust, nil
-	}
-
-	return tl, nil
-}
-
-func (incp *inmemCertPool) IsRevoke(id []byte) error {
-	revoked, ok := incp.revoked[string(id)]
-	if !ok {
-		return nil
-	}
-
-	if revoked {
-		return ErrRevoked
-	}
-
-	return nil
-}
-
 func TestVerifyPKI(t *testing.T) {
-	cp := newInMemCertPool()
+	cp := NewInMemCertPool()
 
 	pubRoot, privRoot, err := GenerateEd25519Key()
 	if err != nil {

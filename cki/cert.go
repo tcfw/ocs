@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vmihailenco/msgpack"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -41,8 +42,8 @@ const (
 	certTypeMax
 )
 
-//Entity provides x509-like personal or businses like information
-//in the certificate
+//Entity provides personal or businses information in
+//the certificate
 type Entity struct {
 	Name     string `msgpack:"o,omitempty"`
 	Unit     string `msgpack:"ou,omitempty"`
@@ -149,7 +150,7 @@ func ParseCertificate(d []byte) (*Certificate, error) {
 		return nil, err
 	}
 
-	pk, err := parsePublicKey(cert.Algo, cert.PublicKey)
+	pk, err := ParsePublicKey(cert.Algo, cert.PublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -184,6 +185,7 @@ func (cert *Certificate) Bytes() ([]byte, error) {
 	return cert.Marshal()
 }
 
+//validate checks required properties of the certificate
 func (cert *Certificate) validate() error {
 	if cert.Version != 1 {
 		return errors.New("invalid version")
@@ -282,6 +284,8 @@ func (cert *Certificate) PEM() ([]byte, error) {
 	return pem.EncodeToMemory(b), nil
 }
 
+//marshalForSignature creates a digest of the required fields of the certificate to be used
+//when creating signatures
 func (cert *Certificate) marshalForSignature(pkID []byte) ([]byte, error) {
 	d, err := msgpack.Marshal(
 		Certificate{
@@ -303,9 +307,13 @@ func (cert *Certificate) marshalForSignature(pkID []byte) ([]byte, error) {
 	//Append signing key id
 	d = append(d, pkID...)
 
-	return d, nil
+	digest := sha3.Sum384(d)
+
+	return digest[:], nil
 }
 
+//verifySignatureMatching checks if any of the signatures in the certficiate match the given
+//public key - returning on the first match
 func (cert *Certificate) verifySignatureMatching(pkID []byte, pubk PublicKey) error {
 	sigInfo, err := cert.marshalForSignature(pkID)
 	if err != nil {
@@ -321,6 +329,8 @@ func (cert *Certificate) verifySignatureMatching(pkID []byte, pubk PublicKey) er
 	return ErrNoMatchingSignatures
 }
 
+//verifySignatureOnly verifies the only 1 signature exists and that that signature matches
+//the given public key
 func (cert *Certificate) verifySignatureOnly(pkID []byte, pubk PublicKey) error {
 	sigCount := len(cert.Signatures)
 	if sigCount > 1 || sigCount == 0 {
@@ -339,6 +349,7 @@ func (cert *Certificate) verifySignatureOnly(pkID []byte, pubk PublicKey) error 
 	return ErrNoMatchingSignatures
 }
 
+//pubAlgo provides the algorithm used for the given public key
 func pubAlgo(pub PublicKey) Algorithm {
 	switch pub.(type) {
 	case Ed25519Public:
@@ -348,9 +359,9 @@ func pubAlgo(pub PublicKey) Algorithm {
 	case *RSAPublicKey:
 		bits := pub.(*RSAPublicKey).PublicKey.Size() * 8
 		if bits == 2048 {
-			return RSA2048SHA384
+			return RSA2048
 		} else if bits == 4096 {
-			return RSA4096SHA384
+			return RSA4096
 		} else {
 			panic("unsupported RSA bit size")
 		}
@@ -359,10 +370,12 @@ func pubAlgo(pub PublicKey) Algorithm {
 	}
 }
 
+//GetPublicKey provides a parsed version of the certificates public key
 func (c *Certificate) GetPublicKey() (PublicKey, error) {
 	return c.publicKey, nil
 }
 
+//privKeyAlgo provides the algorithm used for the private key
 func privKeyAlgo(priv PrivateKey) Algorithm {
 	switch priv.(type) {
 	case *Ed25519Private:
@@ -372,9 +385,9 @@ func privKeyAlgo(priv PrivateKey) Algorithm {
 	case *RSAPrivateKey:
 		bits := priv.(*RSAPrivateKey).Size() * 8
 		if bits == 2048 {
-			return RSA2048SHA384
+			return RSA2048
 		} else if bits == 4096 {
-			return RSA4096SHA384
+			return RSA4096
 		} else {
 			panic("unsupported RSA bit size")
 		}

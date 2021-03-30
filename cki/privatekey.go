@@ -44,6 +44,7 @@ func (privk *ocsPrivateKey) Bytes() ([]byte, error) {
 	return msgpack.Marshal(privk)
 }
 
+//ParsePrivateKey unmarshals the private key raw data
 func ParsePrivateKey(d []byte) (PrivateKey, error) {
 	k := &ocsPrivateKey{}
 
@@ -61,14 +62,14 @@ func ParsePrivateKey(d []byte) (PrivateKey, error) {
 		return parseED25519PrivateKey(k)
 	case ECDSAsecp256r1, ECDSAsecp384r1:
 		return parseECPrivateKey(k)
-	case RSA2048SHA384, RSA4096SHA384:
-		return parseRSAPrivateKey(k)
+	case RSA2048, RSA4096:
+		return ParseRSAPrivateKey(k)
 	default:
 		return nil, ErrUnknownKeyAlgorithm
 	}
 }
 
-//MarshalEncryptedPrivateKey encodes and encryps a private key with AES256-GCM
+//MarshalEncryptedPrivateKey encodes and encryps a private key with AES-256-GCM
 func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 	if len(key) != 32 {
 		return nil, errors.New("key length should be 32 bytes")

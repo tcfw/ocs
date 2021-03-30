@@ -3,6 +3,7 @@ package cki
 import (
 	"bytes"
 	"errors"
+	"fmt"
 )
 
 var (
@@ -10,6 +11,7 @@ var (
 	ErrRevoked              = errors.New("certificate has been marked as revoked")
 )
 
+//Verify verifies the certificates signators over a given cert pool
 func (c *Certificate) Verify(p CertPool) error {
 	switch c.CertType {
 	case PKI, MultiPKI:
@@ -22,6 +24,8 @@ func (c *Certificate) Verify(p CertPool) error {
 	}
 }
 
+//verifyPKI verifies both Multi-PKI and single PKI requiring the signator to have a trust
+//level of a least Trusted. Revoked certificates are rejected
 func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 	if !multi && len(c.Signatures) != 1 {
 		return ErrTooManySignatures
@@ -105,6 +109,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 	return nil
 }
 
+//verifyWOT TODO(tcfw)
 func verifyWOT(c *Certificate, p CertPool) error {
-	return nil
+	return fmt.Errorf("not implemented")
 }
