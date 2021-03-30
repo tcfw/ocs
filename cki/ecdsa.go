@@ -37,7 +37,7 @@ func algoToCurve(a Algorithm) elliptic.Curve {
 	}
 }
 
-//ECDSASignature representation of a unpacked ECDSA siganture
+//ECDSASignature representation of a unpacked ECDSA signature
 type ECDSASignature struct {
 	Algo Algorithm `msgpack:"a"`
 	R    []byte    `msgpack:"r"`

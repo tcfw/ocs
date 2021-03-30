@@ -12,10 +12,15 @@ import (
 )
 
 var (
-	ErrInvalidHeader          = errors.New("invalid header")
-	ErrInvalidPublicKey       = errors.New("invalid public key")
-	ErrBadSignature           = errors.New("bad signature")
-	ErrBadCertificate         = errors.New("bad certificate")
+	//ErrInvalidHeader invalid header
+	ErrInvalidHeader = errors.New("invalid header")
+	//ErrInvalidPublicKey invalid public key
+	ErrInvalidPublicKey = errors.New("invalid public key")
+	//ErrBadSignature bad signature
+	ErrBadSignature = errors.New("bad signature")
+	//ErrBadCertificate bad certificate
+	ErrBadCertificate = errors.New("bad certificate")
+	//ErrNoMatchingCertificates no matching certificates
 	ErrNoMatchingCertificates = errors.New("no matching certificates")
 )
 
@@ -121,7 +126,7 @@ func NewHeader(sigCert, intendedCert *cki.Certificate) (*Header, cki.PrivateKey,
 func NewHeaderWithOptions(sigCert, intendedCert *cki.Certificate, options ...HeaderOption) (*Header, error) {
 	h := &Header{
 		Version:               1,
-		Algo:                  ChaCha20_Poly1305,
+		Algo:                  ChaCha20Poly1305,
 		CertificateID:         sigCert.ID,
 		IntendedCertificateID: intendedCert.ID,
 

@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	//ErrUnknownKeyAlgorithm unknown key algorithm
 	ErrUnknownKeyAlgorithm = errors.New("unknown key algorithm")
 )
 

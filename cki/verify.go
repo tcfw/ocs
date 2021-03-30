@@ -7,8 +7,10 @@ import (
 )
 
 var (
+	//ErrUntrustedCertificate when a certificate is untrusted explicitly
 	ErrUntrustedCertificate = errors.New("certificate is not trusted")
-	ErrRevoked              = errors.New("certificate has been marked as revoked")
+	//ErrRevoked when a certificate either immediately or in the chain is revoked
+	ErrRevoked = errors.New("certificate has been marked as revoked")
 )
 
 //Verify verifies the certificates signators over a given cert pool
@@ -31,7 +33,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 		return ErrTooManySignatures
 	}
 
-	if err := p.IsRevoke(c.ID); err != nil {
+	if err := p.IsRevoked(c.ID); err != nil {
 		return ErrRevoked
 	}
 
@@ -75,7 +77,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 			return err
 		}
 
-		if err := p.IsRevoke(parent.ID); err != nil {
+		if err := p.IsRevoked(parent.ID); err != nil {
 			return ErrRevoked
 		}
 

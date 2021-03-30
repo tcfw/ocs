@@ -30,7 +30,7 @@ func (s *Server) GetRevoke(ctx context.Context, id []byte) ([]byte, error) {
 	return s.rNode.DHT.GetValue(ctx, `/ocs/test`)
 }
 
-//GetRevoke searches for a signature revoke in the DHT
+//GetRevokeSignature searches for a signature revoke in the DHT
 //TODO(tcfw)
 func (s *Server) GetRevokeSignature(ctx context.Context, id []byte, parent []byte) ([]byte, error) {
 	return nil, fmt.Errorf("not implemented")

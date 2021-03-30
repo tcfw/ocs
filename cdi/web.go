@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	//OCSCertificateMIME MIME type which can be used in web requests/responses
 	OCSCertificateMIME = "application/x-ocs-certificate"
 )
 
@@ -182,5 +183,6 @@ func (s *Server) webLookup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Add("Content-Type", OCSCertificateMIME)
+
 	w.Write(pem)
 }

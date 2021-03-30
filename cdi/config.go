@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	//DefaultIPFSConfigPath default config path for IPFS node
 	DefaultIPFSConfigPath = "~/.ocs/ipfs/"
 )
 

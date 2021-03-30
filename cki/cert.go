@@ -13,10 +13,14 @@ import (
 )
 
 var (
-	ErrAlreadySigned        = errors.New("already signed by this key")
+	//ErrAlreadySigned already signed by this key
+	ErrAlreadySigned = errors.New("already signed by this key")
+	//ErrNoMatchingSignatures no matching signatures
 	ErrNoMatchingSignatures = errors.New("no matching signatures")
-	ErrTooManySignatures    = errors.New("too many signatures")
-	ErrUnknownPEMType       = errors.New("unknown PEM block header type")
+	//ErrTooManySignatures too many signatures
+	ErrTooManySignatures = errors.New("too many signatures")
+	//ErrUnknownPEMType unknown PEM block header type
+	ErrUnknownPEMType = errors.New("unknown PEM block header type")
 )
 
 const (
@@ -371,8 +375,8 @@ func pubAlgo(pub PublicKey) Algorithm {
 }
 
 //GetPublicKey provides a parsed version of the certificates public key
-func (c *Certificate) GetPublicKey() (PublicKey, error) {
-	return c.publicKey, nil
+func (cert *Certificate) GetPublicKey() (PublicKey, error) {
+	return cert.publicKey, nil
 }
 
 //privKeyAlgo provides the algorithm used for the private key

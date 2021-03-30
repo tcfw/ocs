@@ -10,12 +10,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 )
 
+//Server a OCS-CDI node implementation
 type Server struct {
 	rNode        *core.IpfsNode
 	ipfs         icore.CoreAPI
 	certificates CertStore
 }
 
+//NewServer creates a new OCS CDI node
 func NewServer() *Server {
 	s := &Server{}
 	s.certificates = &IPFSCertStore{s}
@@ -23,6 +25,7 @@ func NewServer() *Server {
 	return s
 }
 
+//Start starts the node
 func (s *Server) Start() error {
 	ctx := context.Background()
 

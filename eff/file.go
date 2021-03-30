@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	//Magic number used for file signature/identification
 	Magic = "OCSEFF"
 )
 
