@@ -31,11 +31,11 @@ func setupPlugins(externalPluginsPath string) error {
 
 	// Load preloaded and external plugins
 	if err := plugins.Initialize(); err != nil {
-		return fmt.Errorf("error initializing plugins: %s", err)
+		return fmt.Errorf("error initialising plugins: %s", err)
 	}
 
 	if err := plugins.Inject(); err != nil {
-		return fmt.Errorf("error initializing plugins: %s", err)
+		return fmt.Errorf("error initialising plugins: %s", err)
 	}
 
 	return nil

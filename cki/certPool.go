@@ -8,7 +8,7 @@ type TrustLevel uint8
 const (
 	//UnknownTrust represents an unknown or incomplete state of trust
 	UnknownTrust = iota
-	//NotTrusted represents a explicity untrusted certificate
+	//NotTrusted represents a explicitly untrusted certificate
 	NotTrusted
 	//IndirectlyTrusted represents a certificate which is not immediate trusted, but is trusted by another certificate the system trusts (WOT)
 	IndirectlyTrusted
