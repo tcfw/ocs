@@ -18,7 +18,7 @@ type Server struct {
 
 func NewServer() *Server {
 	s := &Server{}
-	s.certificates = &SimpleCertStore{s}
+	s.certificates = &IPFSCertStore{s}
 
 	return s
 }

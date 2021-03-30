@@ -19,6 +19,8 @@ var (
 	bootstrapPeers = []string{}
 )
 
+//initIPFSConfig creates a new IPFS repo and associated config, updating the IPFS bootstrap nodes
+//to the OCS bootstrap nodes
 func initIPFSConfig(path string) error {
 	if path[0] == '~' {
 		home, err := os.UserHomeDir()

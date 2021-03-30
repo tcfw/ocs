@@ -15,35 +15,44 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+//LookupType represents the mode of lookup
 type LookupType string
 
 const (
-	RefLookup    = "ref"
+	//RefLookup represents a public reference of an certificate (IPFS block addr)
+	RefLookup = "ref"
+	//CertIDLookup represents a lookup against the certificates ID
 	CertIDLookup = "id"
-	EmailLookup  = "email"
+	//EmailLookup represents a lookup against any stored email in a certificate
+	EmailLookup = "email"
 )
 
+//CertRef represents a certificate reference structure
 type CertRef struct {
 	Ref           string `msgpack:"r"`
 	Signature     []byte `msgpack:"s"`
 	SignatureData []byte `msgpack:"sd"`
 }
 
+//Lookup represents a lookup request data
 type Lookup struct {
 	LookupType LookupType `json:"t" msgpack:"t"`
 	Data       []byte     `json:"d" msgpack:"d"`
 }
 
+//CertStore provides a means of finding certificates
 type CertStore interface {
 	Lookup(context.Context, *Lookup) (io.Reader, error)
 	Publish(context.Context, *cki.Certificate, *PublishRequest) (string, error)
 }
 
-type SimpleCertStore struct {
+//IPFSCertStore uses IPFS to create a certificate store
+type IPFSCertStore struct {
 	s *Server
 }
 
-func (scs *SimpleCertStore) Publish(ctx context.Context, c *cki.Certificate, r *PublishRequest) (string, error) {
+//Publish publishes a certificate based on a signed public request
+func (scs *IPFSCertStore) Publish(ctx context.Context, c *cki.Certificate, r *PublishRequest) (string, error) {
 	d, err := c.Bytes()
 	if err != nil {
 		return "", err
@@ -85,7 +94,9 @@ func (scs *SimpleCertStore) Publish(ctx context.Context, c *cki.Certificate, r *
 	return path, err
 }
 
-func (scs *SimpleCertStore) Lookup(ctx context.Context, l *Lookup) (io.Reader, error) {
+//Lookup attempts to find a certificate based on the lookup request. The IPFS DHT may be used
+//to search for certificate IDs or emails, otherwise block lookup is used.
+func (scs *IPFSCertStore) Lookup(ctx context.Context, l *Lookup) (io.Reader, error) {
 	var refKey string
 
 	switch l.LookupType {

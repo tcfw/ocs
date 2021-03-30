@@ -21,6 +21,7 @@ const (
 	refCertIDNS = `idRef`
 )
 
+//setupDHTValidator adds the ocs namespace into the IPFS DHT validators
 func (s *Server) setupDHTValidator() {
 	validator := &ocsValidator{s.ipfs}
 
@@ -30,10 +31,13 @@ func (s *Server) setupDHTValidator() {
 	lanValidator[validatorNS] = validator
 }
 
+//ocsValidator the main OCS DHT entry validator
 type ocsValidator struct {
 	ipfs icore.CoreAPI
 }
 
+//Validate ensures keys attempted to be added to the DHT in the OCS namespace are corretly formatted
+//and verifies the associated signatures
 func (ocsv *ocsValidator) Validate(key string, value []byte) error {
 	parts := strings.Split(key, "/")
 	parts = parts[1:]
@@ -83,7 +87,10 @@ func (ocsv *ocsValidator) Validate(key string, value []byte) error {
 	return nil
 }
 
+//Select chooses which value to provide as they get updated in the DHT
+//Currently just returns the first available
 func (ocsv *ocsValidator) Select(key string, values [][]byte) (int, error) {
+	//TODO(tcfw) select against a timestamp in certificate nbf/nat
 	fmt.Printf("TO SELECT: %+v %+v\n", key, values)
 	return 0, nil
 }

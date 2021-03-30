@@ -10,6 +10,7 @@ const (
 	swarmKeyFile = "swarm.key"
 )
 
+//initSwarmKey creates the swarm key in the IPFS repo
 func initSwarmKey(repoPath string) error {
 	floc := fmt.Sprintf("%s/%s", repoPath, swarmKeyFile)
 	f, err := os.OpenFile(floc, os.O_CREATE|os.O_RDWR, 0644)

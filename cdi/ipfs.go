@@ -13,6 +13,7 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 )
 
+//createIPFSRepo creates an initial IPFS repo at the default location
 func createIPFSRepo(ctx context.Context) (string, error) {
 	path := DefaultIPFSConfigPath
 	err := initIPFSConfig(path)
@@ -20,6 +21,7 @@ func createIPFSRepo(ctx context.Context) (string, error) {
 	return path, err
 }
 
+//setupPlugins enables IPFS plugins
 func setupPlugins(externalPluginsPath string) error {
 	// Load any external plugins if available on externalPluginsPath
 	plugins, err := loader.NewPluginLoader(filepath.Join(externalPluginsPath, "plugins"))
@@ -55,6 +57,7 @@ func spawnIPFSNode(ctx context.Context) (*core.IpfsNode, icore.CoreAPI, error) {
 	return createNode(ctx, repoPath)
 }
 
+//createNode creates a new IPFS node from the repo
 func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, icore.CoreAPI, error) {
 	// Open the repo
 	repo, err := fsrepo.Open(repoPath)

@@ -18,6 +18,7 @@ const (
 	OCSCertificateMIME = "application/x-ocs-certificate"
 )
 
+//startWebAPI creates a router and associated http server to respond with API requests
 func (s *Server) startWebAPI() {
 	mux := mux.NewRouter()
 
@@ -28,9 +29,11 @@ func (s *Server) startWebAPI() {
 
 	fmt.Println("Starting web api")
 
+	//TODO(tcfw) TLS config
 	http.ListenAndServe(":8082", mux)
 }
 
+//webListPeers provides a list of peers the node has in it's peer store
 func (s *Server) webListPeers(w http.ResponseWriter, r *http.Request) {
 	remoteIP := net.ParseIP(r.RemoteAddr)
 	if remoteIP != nil && remoteIP.IsGlobalUnicast() {
@@ -52,12 +55,14 @@ func (s *Server) webListPeers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(list)
 }
 
+//PublishRequest represents a certificate publish request
 type PublishRequest struct {
 	Cert          []byte `msgpack:"c" json:"c"`
 	Signature     []byte `msgpack:"s" json:"s"`
 	SignatureData []byte `msgpack:"sd" json:"sd"`
 }
 
+//webPublish uses a publish request to publish the certificate to the cert store
 func (s *Server) webPublish(w http.ResponseWriter, r *http.Request) {
 	br := io.LimitReader(r.Body, 10<<20) //10MB limit
 
@@ -137,6 +142,7 @@ func (s *Server) webRevoke(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`OK`))
 }
 
+//webLookup looks up certificates based on the Lookup request
 func (s *Server) webLookup(w http.ResponseWriter, r *http.Request) {
 	t := r.URL.Query().Get("t")
 
@@ -178,11 +184,3 @@ func (s *Server) webLookup(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", OCSCertificateMIME)
 	w.Write(pem)
 }
-
-// b, err := s.GetRevoke(r.Context(), []byte(``))
-// if err != nil {
-// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-// 	return
-// }
-
-// w.Write(b)
