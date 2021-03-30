@@ -15,7 +15,7 @@ var (
 	ErrInvalidHeader          = errors.New("invalid header")
 	ErrInvalidPublicKey       = errors.New("invalid public key")
 	ErrBadSignature           = errors.New("bad signature")
-	ErrBadCertificate         = errors.New("bad certificiate")
+	ErrBadCertificate         = errors.New("bad certificate")
 	ErrNoMatchingCertificates = errors.New("no matching certificates")
 )
 
@@ -104,6 +104,9 @@ func NewHeader(sigCert, intendedCert *cki.Certificate) (*Header, cki.PrivateKey,
 	}
 
 	pk, hdopt, err := WithEphemeral(intendedCert.Algo)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	h, err := NewHeaderWithOptions(sigCert, intendedCert, hdopt)
 	if err != nil {

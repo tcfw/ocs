@@ -242,7 +242,7 @@ func (cert *Certificate) AddSignature(issuer *Certificate, privk PrivateKey, pub
 		}
 	}
 
-	//Sign specific parts of the certificiate - i.e. other signatures should not be part of the signature
+	//Sign specific parts of the certificate - i.e. other signatures should not be part of the signature
 	sigInfo, err := cert.marshalForSignature(issuer.ID)
 	if err != nil {
 		return fmt.Errorf("failed to prepare signature data: %s", err)

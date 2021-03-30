@@ -36,7 +36,7 @@ type ocsValidator struct {
 	ipfs icore.CoreAPI
 }
 
-//Validate ensures keys attempted to be added to the DHT in the OCS namespace are corretly formatted
+//Validate ensures keys attempted to be added to the DHT in the OCS namespace are correctly formatted
 //and verifies the associated signatures
 func (ocsv *ocsValidator) Validate(key string, value []byte) error {
 	parts := strings.Split(key, "/")

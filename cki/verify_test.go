@@ -57,7 +57,7 @@ func TestVerifyPKI(t *testing.T) {
 			Email:    "certificates@tcfw.com.au",
 		},
 	}
-	interm, err := NewCertificate(intermTemplate, pubInterm, root, privRoot)
+	intermediate, err := NewCertificate(intermTemplate, pubInterm, root, privRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,14 +74,14 @@ func TestVerifyPKI(t *testing.T) {
 			Country:  "AU",
 		},
 	}
-	edge, err := NewCertificate(edgeTemplate, pubEdge, interm, privInterm)
+	edge, err := NewCertificate(edgeTemplate, pubEdge, intermediate, privInterm)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//Root CA trusted
 	cp.AddCert(root, Trusted)
-	cp.AddCert(interm, UnknownTrust)
+	cp.AddCert(intermediate, UnknownTrust)
 	cp.AddCert(edge, UnknownTrust)
 
 	err = edge.Verify(cp)
@@ -91,7 +91,7 @@ func TestVerifyPKI(t *testing.T) {
 
 	//No one trusted
 	cp.AddCert(root, UnknownTrust)
-	cp.AddCert(interm, UnknownTrust)
+	cp.AddCert(intermediate, UnknownTrust)
 	cp.AddCert(edge, UnknownTrust)
 
 	err = edge.Verify(cp)
@@ -101,7 +101,7 @@ func TestVerifyPKI(t *testing.T) {
 
 	//Intermediate Trusted
 	cp.AddCert(root, UnknownTrust)
-	cp.AddCert(interm, Trusted)
+	cp.AddCert(intermediate, Trusted)
 	cp.AddCert(edge, UnknownTrust)
 
 	err = edge.Verify(cp)
@@ -109,7 +109,7 @@ func TestVerifyPKI(t *testing.T) {
 
 	//Edge ultimately trusted
 	cp.AddCert(root, UnknownTrust)
-	cp.AddCert(interm, UnknownTrust)
+	cp.AddCert(intermediate, UnknownTrust)
 	cp.AddCert(edge, UltimatelyTrusted)
 
 	err = edge.Verify(cp)
@@ -117,7 +117,7 @@ func TestVerifyPKI(t *testing.T) {
 
 	//Root not trusted
 	cp.AddCert(root, NotTrusted)
-	cp.AddCert(interm, UnknownTrust)
+	cp.AddCert(intermediate, UnknownTrust)
 	cp.AddCert(edge, UnknownTrust)
 
 	err = edge.Verify(cp)

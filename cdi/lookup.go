@@ -61,6 +61,10 @@ func (scs *IPFSCertStore) Publish(ctx context.Context, c *cki.Certificate, r *Pu
 	block := blocks.NewBlock(d)
 
 	err = scs.s.rNode.Blocks.AddBlock(block)
+	if err != nil {
+		return "", err
+	}
+
 	path := block.Cid().String()
 
 	refs := &CertRef{Ref: path, Signature: r.Signature, SignatureData: r.SignatureData}

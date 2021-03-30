@@ -116,6 +116,9 @@ func TestCertValidity(t *testing.T) {
 	}
 
 	cert, err := NewCertificate(template, pub, nil, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	//Version
 	cert.Version = 3
