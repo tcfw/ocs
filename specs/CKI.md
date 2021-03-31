@@ -115,8 +115,8 @@ Each algorithm and associated parameters are allocated a unique identifier in th
 - 1: ED25519
 - 2: ECDSA using curve NIST P-256 (secp256r1)
 - 3: ECDSA using curve NIST P-384 (secp384r1)
-- 4: 2048 bit RSA using SHA2-384 PKCS1v15
-- 5: 4096 bit RSA using SHA2-384 PKCS1v15
+- 4: 2048 bit RSA PKCS1v15
+- 5: 4096 bit RSA PKCS1v15
 
 ### Version
 
@@ -144,6 +144,10 @@ If the certificate type is in PKI or Multi-PKI mode, the subject MAY be used for
 
 ### Public Key
 
-THe public key field MUST contain the public key of which was generated during the private key of which the certificate will be used for. The public key MUST match the Algo field type and MUST be used when signing other certificates.
+The public key field MUST contain the public key of which was generated during the private key of which the certificate will be used for. The public key MUST match the Algo field type and MUST be used when signing other certificates.
 
 The encoding of the public key depends on the type of algorithm used when generating the private key, SHOULD be in msgpack encoding.
+
+### Encrypted Private Keys
+
+Private keys should be stored in the encrypted format. The private key MUST be encrypted in AES-256-GCM using a argon2id derived key (times: 2, memory: 64kb, threads: 2) with a cryptographically random salt of 32 byte. The salt should be stored at the beginning of the byte slice followed by a nonce. The salt MUST be used as additional data in the encryption.

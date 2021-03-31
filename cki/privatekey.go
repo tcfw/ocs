@@ -7,11 +7,19 @@ import (
 	"errors"
 
 	"github.com/vmihailenco/msgpack"
+	"golang.org/x/crypto/argon2"
 )
 
 var (
 	//ErrUnknownKeyAlgorithm unknown key algorithm
 	ErrUnknownKeyAlgorithm = errors.New("unknown key algorithm")
+)
+
+const (
+	argon2Times   = 2
+	argon2Mem     = 64 * 1024
+	argon2Threads = 2
+	saltLen       = 32
 )
 
 //PrivateKey to create signatures
@@ -76,12 +84,20 @@ func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 		return nil, errors.New("key length should be 32 bytes")
 	}
 
+	salt := make([]byte, saltLen)
+	_, err := rand.Read(salt)
+	if err != nil {
+		return nil, err
+	}
+
+	encKey := argon2.IDKey(key, salt, argon2Times, argon2Mem, argon2Threads, 32)
+
 	d, err := MarshalPrivateKey(pk)
 	if err != nil {
 		return nil, err
 	}
 
-	aesCipher, err := aes.NewCipher(key)
+	aesCipher, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +109,9 @@ func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 
 	nonceSize := aead.NonceSize()
 
-	dst := make([]byte, nonceSize+len(d)+aead.Overhead())
+	encDst := make([]byte, nonceSize+len(d)+aead.Overhead())
 
-	n, err := rand.Read(dst[:nonceSize])
+	n, err := rand.Read(encDst[:nonceSize])
 	if err != nil {
 		return nil, err
 	}
@@ -103,9 +119,11 @@ func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 		return nil, errors.New("nonce read mismatch")
 	}
 
-	aead.Seal(dst[:nonceSize], dst[:nonceSize], d, nil)
+	aead.Seal(encDst[:nonceSize], encDst[:nonceSize], d, salt)
 
-	return dst, nil
+	salt = append(salt, encDst...)
+
+	return salt, nil
 }
 
 //ParseEncryptedPrivateKey decrypts and decodes a private key using AES256-GCM
@@ -114,7 +132,12 @@ func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
 		return nil, errors.New("key length should be 32 bytes")
 	}
 
-	aesCipher, err := aes.NewCipher(key)
+	salt := d[:saltLen]
+	d = d[saltLen:]
+
+	encKey := argon2.IDKey(key, salt, argon2Times, argon2Mem, argon2Threads, 32)
+
+	aesCipher, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +151,7 @@ func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
 
 	dst := make([]byte, len(d)-nonceSize)
 
-	_, err = aead.Open(dst[:0], d[:nonceSize], d[nonceSize:], nil)
+	_, err = aead.Open(dst[:0], d[:nonceSize], d[nonceSize:], salt)
 	if err != nil {
 		return nil, err
 	}
