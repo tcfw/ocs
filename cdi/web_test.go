@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/base64"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -75,8 +74,6 @@ func TestPublish(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Fatalf("%s", base64.StdEncoding.EncodeToString(reqBytes))
 
 	//Setup server
 	s := &Server{}

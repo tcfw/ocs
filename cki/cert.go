@@ -241,7 +241,7 @@ func (cert *Certificate) AddSignature(issuer *Certificate, privk PrivateKey, pub
 	issuerID := issuer.ID
 
 	for _, prevSig := range cert.Signatures {
-		if bytes.Compare(prevSig.ID, issuerID) == 0 {
+		if !bytes.Equal(prevSig.ID, issuerID) {
 			return ErrAlreadySigned
 		}
 	}

@@ -26,6 +26,7 @@ const (
 type PrivateKey interface {
 	Sign([]byte) ([]byte, error)
 	Bytes() ([]byte, error)
+	PublicKey() PublicKey
 }
 
 //MarshalPrivateKey encodes a private key into msgpack encoding

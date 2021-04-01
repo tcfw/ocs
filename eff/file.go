@@ -22,7 +22,7 @@ func ParseEFF(r io.Reader) (*Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	if bytes.Compare(version, []byte{1}) != 0 {
+	if !bytes.Equal(version, []byte{1}) {
 		return nil, fmt.Errorf("invalid version")
 	}
 
@@ -30,7 +30,7 @@ func ParseEFF(r io.Reader) (*Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	if bytes.Compare(magic, []byte(Magic)) != 0 {
+	if !bytes.Equal(magic, []byte(Magic)) {
 		return nil, fmt.Errorf("invalid magic")
 	}
 

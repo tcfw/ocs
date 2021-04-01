@@ -307,8 +307,16 @@ func (h *Header) sharedKey(cp cki.CertPool, priv cki.PrivateKey, sending bool) (
 		return nil, ErrNoMatchingCertificates
 	}
 
-	skpk := h.EphemeralPublicKey
+	expectedPubK, err := priv.PublicKey().Bytes()
+	if err != nil {
+		return nil, err
+	}
 
+	if !sending && !bytes.Equal(expectedPubK, h.intCert.PublicKey) {
+		return nil, ErrInvalidPublicKey
+	}
+
+	skpk := h.EphemeralPublicKey
 	if sending {
 		skpk = h.intCert.PublicKey
 	}
@@ -354,7 +362,7 @@ func (h *Header) findCert(cp cki.CertPool, id []byte) (*cki.Certificate, error) 
 		if err != nil {
 			return nil, ErrBadCertificate
 		}
-		if bytes.Compare(cert.ID, id) == 0 {
+		if bytes.Equal(cert.ID, id) {
 			wanted = cert
 		}
 	}
@@ -365,7 +373,7 @@ func (h *Header) findCert(cp cki.CertPool, id []byte) (*cki.Certificate, error) 
 		if err != nil {
 			return nil, err
 		}
-		if bytes.Compare(id, cert.ID) == 0 {
+		if bytes.Equal(id, cert.ID) {
 			wanted = cert
 		}
 	}

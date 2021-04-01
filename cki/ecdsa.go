@@ -126,6 +126,11 @@ func (secpk *SecpPrivateKey) Bytes() ([]byte, error) {
 	return msgpack.Marshal(ec)
 }
 
+//PublicKey provides the EC public key
+func (secpk *SecpPrivateKey) PublicKey() PublicKey {
+	return &SecpPublicKey{secpk.PrivateKey.PublicKey, secpk.algo}
+}
+
 //SecpPublicKey wrapper for a ECDSA public key
 type SecpPublicKey struct {
 	ecdsa.PublicKey

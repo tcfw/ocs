@@ -67,6 +67,11 @@ func (ed *Ed25519Private) Bytes() ([]byte, error) {
 	return ed.priv, nil
 }
 
+//PublicKey provides the Ed25519 public key
+func (ed *Ed25519Private) PublicKey() PublicKey {
+	return Ed25519Public(ed.pub)
+}
+
 //Sign a msg using the Ed25519 private key
 func (ed *Ed25519Private) Sign(d []byte) ([]byte, error) {
 	sig := ed25519.Sign(ed.priv, d)

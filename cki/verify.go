@@ -49,7 +49,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 
 	for _, sig := range c.Signatures {
 		//Skip self signed
-		if bytes.Compare(sig.ID, c.ID) == 0 {
+		if bytes.Equal(sig.ID, c.ID) {
 			err = c.verifySignatureOnly(sig.ID, c.publicKey)
 			if err != nil {
 				return err

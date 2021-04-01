@@ -81,3 +81,8 @@ func (privk *RSAPrivateKey) Sign(d []byte) ([]byte, error) {
 func (privk *RSAPrivateKey) Bytes() ([]byte, error) {
 	return x509.MarshalPKCS1PrivateKey(privk.PrivateKey), nil
 }
+
+//PublicKey provides the RSA public key
+func (privk *RSAPrivateKey) PublicKey() PublicKey {
+	return &RSAPublicKey{privk.PrivateKey.PublicKey}
+}
