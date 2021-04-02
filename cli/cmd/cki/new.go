@@ -1,0 +1,214 @@
+package cki
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/tcfw/ocs/cki"
+)
+
+var (
+	newCmd = &cobra.Command{
+		Use:   "new",
+		Short: "Create a new certificate",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := newCert(cmd)
+			if err != nil {
+				fmt.Printf("[error] %s\n", err.Error())
+				os.Exit(1)
+			}
+		},
+	}
+)
+
+func Attach(parent *cobra.Command) {
+	parent.AddCommand(newCmd)
+	parent.AddCommand(pkCmd)
+}
+
+func init() {
+	newCmd.Flags().Bool("nointeraction", false, "Disable UI interaction")
+
+	newCmd.Flags().StringP("mode", "m", "pki", "Certificate Mode [pki, mpki, wot]")
+	newCmd.Flags().StringP("key", "k", "", "Private key to use (in PEM format)")
+	newCmd.Flags().StringP("out", "o", "", "Output file")
+
+	newCmd.Flags().String("notbefore", "", "Set the not before field")
+	newCmd.Flags().String("notafter", "", "Set the not after field (overrides 'days')")
+	newCmd.Flags().IntP("days", "d", 30, "Number of days until the certificate should expire")
+
+	newCmd.Flags().Bool("selfsign", false, "Self-sign the certificate")
+	newCmd.Flags().Bool("ca", false, "Set CA flag in certificate")
+	newCmd.Flags().String("cakey", "", "Certificate Authority private key (in PEM format)")
+
+	newCmd.Flags().StringP("subject", "s", "", "Certificate subject")
+	newCmd.Flags().String("email", "", "Email address")
+
+	newCmd.Flags().String("entityName", "", "Entity name")
+	newCmd.Flags().String("entityUnit", "", "Entity organisation unit")
+	newCmd.Flags().String("entityLocality", "", "Entity locality")
+	newCmd.Flags().String("entityState", "", "Entity state")
+	newCmd.Flags().String("entityCountry", "", "Entity country")
+}
+
+func newCert(cmd *cobra.Command) error {
+	notBeforeRaw, err := cmd.Flags().GetString("notbefore")
+	if err != nil {
+		return err
+	}
+
+	notAfterRaw, err := cmd.Flags().GetString("notafter")
+	if err != nil {
+		return err
+	}
+
+	days, err := cmd.Flags().GetInt("days")
+	if err != nil {
+		return err
+	}
+
+	var notBefore, notAfter time.Time
+
+	if notBeforeRaw != "" {
+		notBefore, err = time.Parse(time.RFC3339, notBeforeRaw)
+		if err != nil {
+			return err
+		}
+	}
+	if notAfterRaw == "" {
+		if days < 1 {
+			return fmt.Errorf("invalid certificate validity dates")
+		}
+		notAfter = time.Now().Add(time.Duration(days) * 24 * time.Hour)
+	} else {
+		notAfter, err = time.Parse(time.RFC3339, notAfterRaw)
+		if err != nil {
+			return err
+		}
+	}
+
+	isCa, err := cmd.Flags().GetBool("ca")
+	if err != nil {
+		return err
+	}
+
+	subject, err := cmd.Flags().GetString("subject")
+	if err != nil {
+		return err
+	}
+
+	email, _ := cmd.Flags().GetString("email")
+	if err != nil {
+		return err
+	}
+
+	modeRaw, err := cmd.Flags().GetString("mode")
+	if err != nil {
+		return err
+	}
+	var mode cki.CertificateType
+
+	switch modeRaw {
+	case "pki":
+		mode = cki.PKI
+	case "mpki":
+		mode = cki.MultiPKI
+	case "wot":
+		mode = cki.WOT
+		subject = email
+	default:
+		return fmt.Errorf("invalid certificate mode")
+	}
+
+	temp := cki.Certificate{
+		CertType:  mode,
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		IsCA:      isCa,
+		Subject:   subject,
+	}
+
+	selfsigned, err := cmd.Flags().GetBool("selfsign")
+	if err != nil {
+		return err
+	}
+
+	pubk, privk, err := readPubPriv(cmd, "key")
+	if err != nil {
+		return err
+	}
+
+	var issuer *cki.Certificate
+
+	if !selfsigned {
+		_, issuerprivk, err := readPubPriv(cmd, "cakey")
+		if err != nil {
+			return err
+		}
+		privk = issuerprivk
+	}
+
+	c, err := cki.NewCertificate(temp, pubk, issuer, privk)
+	if err != nil {
+		return err
+	}
+
+	destFile, err := cmd.Flags().GetString("out")
+	if err != nil {
+		return err
+	}
+
+	pem, err := c.PEM()
+	if err != nil {
+		return err
+	}
+	if destFile == "" {
+
+		fmt.Printf("%s", pem)
+		return nil
+	}
+
+	f, err := os.OpenFile(destFile, os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := f.Write(pem); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey, error) {
+	src, err := cmd.Flags().GetString(flag)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	f, err := os.Open(src)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer f.Close()
+
+	r := io.LimitReader(f, 10<<20)
+
+	d, err := io.ReadAll(r)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pk, err := cki.ParsePrivateKey(d)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pubk := pk.PublicKey()
+
+	return pubk, pk, nil
+}

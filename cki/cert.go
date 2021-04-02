@@ -99,7 +99,9 @@ type PublicKey interface {
 //  - NotAfter if is not zero and is not over 365 days in the future from the current time
 func NewCertificate(template Certificate, pub PublicKey, issuer *Certificate, priv PrivateKey) (*Certificate, error) {
 	template.Version = 1
-	template.NotBefore = time.Now()
+	if template.NotBefore.Before(time.Now()) {
+		template.NotBefore = time.Now()
+	}
 
 	if len(template.Signatures) != 0 {
 		return nil, ErrAlreadySigned
@@ -111,6 +113,10 @@ func NewCertificate(template Certificate, pub PublicKey, issuer *Certificate, pr
 
 	if template.NotAfter.IsZero() {
 		template.NotAfter = time.Now().Add(90 * 24 * time.Hour)
+	}
+
+	if template.NotBefore.After(template.NotAfter) {
+		return nil, fmt.Errorf("not before cannot be after not after")
 	}
 
 	if template.CertType == 0 {

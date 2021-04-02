@@ -4,7 +4,9 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/pem"
 	"errors"
+	"io"
 
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/crypto/argon2"
@@ -81,8 +83,8 @@ func ParsePrivateKey(d []byte) (PrivateKey, error) {
 
 //MarshalEncryptedPrivateKey encodes and encryps a private key with AES-256-GCM
 func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
-	if len(key) != 32 {
-		return nil, errors.New("key length should be 32 bytes")
+	if len(key) < 8 {
+		return nil, errors.New("key length should be at least 8 character")
 	}
 
 	salt := make([]byte, saltLen)
@@ -158,4 +160,19 @@ func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
 	}
 
 	return ParsePrivateKey(dst)
+}
+
+func MarshalPEMPrivateKey(d []byte, w io.Writer) error {
+	b := &pem.Block{Type: PEMPrivKeyHeader, Bytes: d}
+	return pem.Encode(w, b)
+}
+
+func ParsePEMPrivateKey(d []byte) ([]byte, error) {
+	b, _ := pem.Decode(d)
+
+	if b.Type != PEMPrivKeyHeader {
+		return nil, ErrUnknownPEMType
+	}
+
+	return b.Bytes, nil
 }
