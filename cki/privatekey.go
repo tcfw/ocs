@@ -162,6 +162,7 @@ func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
 	return ParsePrivateKey(dst)
 }
 
+//MarshalPEMPrivateKey encodes a marshalled private key to PEM
 func MarshalPEMPrivateKey(d []byte, w io.Writer, encrypted bool) error {
 	bType := PEMPrivKeyHeader
 
@@ -173,6 +174,7 @@ func MarshalPEMPrivateKey(d []byte, w io.Writer, encrypted bool) error {
 	return pem.Encode(w, b)
 }
 
+//ParsePEMPrivateKey parses a non-encrypted PEM encoded file
 func ParsePEMPrivateKey(d []byte) ([]byte, error) {
 	b, _ := pem.Decode(d)
 

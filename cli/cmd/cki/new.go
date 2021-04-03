@@ -25,6 +25,7 @@ var (
 	}
 )
 
+//Attach attaches the cki commands to a root/parent command
 func Attach(parent *cobra.Command) {
 	parent.AddCommand(newCmd)
 	parent.AddCommand(pkCmd)
