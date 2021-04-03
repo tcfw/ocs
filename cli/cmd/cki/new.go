@@ -1,6 +1,7 @@
 package cki
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -55,39 +56,9 @@ func init() {
 }
 
 func newCert(cmd *cobra.Command) error {
-	notBeforeRaw, err := cmd.Flags().GetString("notbefore")
+	notBefore, notAfter, err := calcNotBeforeAfter(cmd)
 	if err != nil {
 		return err
-	}
-
-	notAfterRaw, err := cmd.Flags().GetString("notafter")
-	if err != nil {
-		return err
-	}
-
-	days, err := cmd.Flags().GetInt("days")
-	if err != nil {
-		return err
-	}
-
-	var notBefore, notAfter time.Time
-
-	if notBeforeRaw != "" {
-		notBefore, err = time.Parse(time.RFC3339, notBeforeRaw)
-		if err != nil {
-			return err
-		}
-	}
-	if notAfterRaw == "" {
-		if days < 1 {
-			return fmt.Errorf("invalid certificate validity dates")
-		}
-		notAfter = time.Now().Add(time.Duration(days) * 24 * time.Hour)
-	} else {
-		notAfter, err = time.Parse(time.RFC3339, notAfterRaw)
-		if err != nil {
-			return err
-		}
 	}
 
 	isCa, err := cmd.Flags().GetBool("ca")
@@ -100,35 +71,31 @@ func newCert(cmd *cobra.Command) error {
 		return err
 	}
 
-	email, _ := cmd.Flags().GetString("email")
+	certType, err := getCertType(cmd)
 	if err != nil {
 		return err
 	}
 
-	modeRaw, err := cmd.Flags().GetString("mode")
+	email, err := cmd.Flags().GetString("email")
 	if err != nil {
 		return err
 	}
-	var mode cki.CertificateType
-
-	switch modeRaw {
-	case "pki":
-		mode = cki.PKI
-	case "mpki":
-		mode = cki.MultiPKI
-	case "wot":
-		mode = cki.WOT
+	if certType == cki.WOT {
 		subject = email
-	default:
-		return fmt.Errorf("invalid certificate mode")
+	}
+
+	entity, err := readEntity(cmd)
+	if err != nil {
+		return err
 	}
 
 	temp := cki.Certificate{
-		CertType:  mode,
+		CertType:  certType,
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 		IsCA:      isCa,
 		Subject:   subject,
+		Entity:    entity,
 	}
 
 	selfsigned, err := cmd.Flags().GetBool("selfsign")
@@ -144,10 +111,19 @@ func newCert(cmd *cobra.Command) error {
 	var issuer *cki.Certificate
 
 	if !selfsigned {
+		cakey, err := cmd.Flags().GetString("cakey")
+		if err != nil {
+			return err
+		}
+		if cakey == "" {
+			return fmt.Errorf("CA key cannot be empty when not self signing")
+		}
+
 		_, issuerprivk, err := readPubPriv(cmd, "cakey")
 		if err != nil {
 			return err
 		}
+
 		privk = issuerprivk
 	}
 
@@ -165,8 +141,10 @@ func newCert(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if destFile == "" {
 
+	fmt.Printf("%+v", destFile)
+
+	if destFile == "" {
 		fmt.Printf("%s", pem)
 		return nil
 	}
@@ -190,6 +168,10 @@ func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey
 		return nil, nil, err
 	}
 
+	if src == "" {
+		return nil, nil, fmt.Errorf("no file specified in param %s", flag)
+	}
+
 	f, err := os.Open(src)
 	if err != nil {
 		return nil, nil, err
@@ -203,7 +185,12 @@ func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey
 		return nil, nil, err
 	}
 
-	pk, err := cki.ParsePrivateKey(d)
+	pempk, err := cki.ParsePEMPrivateKey(d)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pk, err := cki.ParsePrivateKey(pempk)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -211,4 +198,154 @@ func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey
 	pubk := pk.PublicKey()
 
 	return pubk, pk, nil
+}
+
+func readEntity(cmd *cobra.Command) (*cki.Entity, error) {
+	var entity *cki.Entity
+
+	email, err := cmd.Flags().GetString("email")
+	if err != nil {
+		return nil, err
+	}
+
+	noninteract, err := cmd.Flags().GetBool("nointeraction")
+	if err != nil {
+		return nil, err
+	}
+	if noninteract {
+		name, err := cmd.Flags().GetString("entityName")
+		if err != nil {
+			return nil, err
+		}
+		unit, err := cmd.Flags().GetString("entityUnit")
+		if err != nil {
+			return nil, err
+		}
+		locality, err := cmd.Flags().GetString("entityLocality")
+		if err != nil {
+			return nil, err
+		}
+		state, err := cmd.Flags().GetString("entityState")
+		if err != nil {
+			return nil, err
+		}
+		country, err := cmd.Flags().GetString("entityCountry")
+		if err != nil {
+			return nil, err
+		}
+
+		entity = &cki.Entity{
+			Name:     name,
+			Unit:     unit,
+			Locality: locality,
+			State:    state,
+			Country:  country,
+			Email:    email,
+		}
+	} else {
+		reader := bufio.NewScanner(os.Stdin)
+
+		fmt.Printf("Entity Name: ")
+		reader.Scan()
+		if err := reader.Err(); err != nil {
+			return nil, err
+		}
+		name := reader.Text()
+		fmt.Printf("Entity Unit: ")
+		reader.Scan()
+		if err := reader.Err(); err != nil {
+			return nil, err
+		}
+		unit := reader.Text()
+		fmt.Printf("Entity Locality: ")
+		reader.Scan()
+		if err := reader.Err(); err != nil {
+			return nil, err
+		}
+		locality := reader.Text()
+		fmt.Printf("Entity State: ")
+		reader.Scan()
+		if err := reader.Err(); err != nil {
+			return nil, err
+		}
+		state := reader.Text()
+		fmt.Printf("Entity Country: ")
+		reader.Scan()
+		if err := reader.Err(); err != nil {
+			return nil, err
+		}
+		country := reader.Text()
+
+		entity = &cki.Entity{
+			Name:     string(name),
+			Unit:     string(unit),
+			Locality: string(locality),
+			State:    string(state),
+			Country:  string(country),
+			Email:    email,
+		}
+	}
+
+	return entity, nil
+}
+
+func calcNotBeforeAfter(cmd *cobra.Command) (time.Time, time.Time, error) {
+	var notBefore, notAfter time.Time
+
+	notBeforeRaw, err := cmd.Flags().GetString("notbefore")
+	if err != nil {
+		return notBefore, notAfter, err
+	}
+
+	notAfterRaw, err := cmd.Flags().GetString("notafter")
+	if err != nil {
+		return notBefore, notAfter, err
+	}
+
+	days, err := cmd.Flags().GetInt("days")
+	if err != nil {
+		return notBefore, notAfter, err
+	}
+
+	if notBeforeRaw != "" {
+		notBefore, err = time.Parse(time.RFC3339, notBeforeRaw)
+		if err != nil {
+			return notBefore, notAfter, err
+		}
+	}
+	if notAfterRaw == "" {
+		if days < 1 {
+			return notBefore, notAfter, fmt.Errorf("invalid certificate validity dates")
+		}
+		notAfter = time.Now().Add(time.Duration(days) * 24 * time.Hour)
+	} else {
+		notAfter, err = time.Parse(time.RFC3339, notAfterRaw)
+		if err != nil {
+			return notBefore, notAfter, err
+		}
+	}
+
+	return notBefore, notAfter, nil
+}
+
+func getCertType(cmd *cobra.Command) (cki.CertificateType, error) {
+	modeRaw, err := cmd.Flags().GetString("mode")
+	if err != nil {
+		return cki.UnknownCertType, err
+	}
+
+	var mode cki.CertificateType
+
+	switch modeRaw {
+	case "pki":
+		mode = cki.PKI
+	case "mpki":
+		mode = cki.MultiPKI
+	case "wot":
+		mode = cki.WOT
+	default:
+		return cki.UnknownCertType, fmt.Errorf("invalid certificate mode")
+	}
+
+	return mode, nil
 }

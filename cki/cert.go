@@ -28,6 +28,8 @@ const (
 	PEMCertHeader = "OCS CERTIFICATE"
 	//PEMPrivKeyHeader PEM block header for private keys
 	PEMPrivKeyHeader = "OCS PRIVATE KEY"
+	//PEMEncPrivKeyHeader PEM block header for encrypted private keys
+	PEMEncPrivKeyHeader = "OCS ENCRYPTED PRIVATE KEY"
 )
 
 //CertificateType the type of certificate chain verifying/signing infrastructure

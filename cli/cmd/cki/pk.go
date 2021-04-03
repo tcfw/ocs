@@ -82,13 +82,12 @@ func newPk(cmd *cobra.Command) error {
 			if err != nil {
 				return err
 			}
-			fmt.Println()
-			fmt.Println()
+			fmt.Printf("\n\n")
 			password = string(l)
 		}
 		raw, err = cki.MarshalEncryptedPrivateKey(pk, []byte(password))
 	} else {
-		raw, err = pk.Bytes()
+		raw, err = cki.MarshalPrivateKey(pk)
 	}
 	if err != nil {
 		return err
@@ -106,10 +105,11 @@ func newPk(cmd *cobra.Command) error {
 			return err
 		}
 		defer f.Close()
+		f.Truncate(0)
 		dest = f
 	}
 
-	err = cki.MarshalPEMPrivateKey(raw, dest)
+	err = cki.MarshalPEMPrivateKey(raw, dest, password != "")
 	if err != nil {
 		return err
 	}
