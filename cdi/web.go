@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/spf13/viper"
 	"github.com/tcfw/ocs/cki"
 	"github.com/vmihailenco/msgpack"
 )
@@ -19,8 +21,7 @@ const (
 	OCSCertificateMIME = "application/x-ocs-certificate"
 )
 
-//startWebAPI creates a router and associated http server to respond with API requests
-func (s *Server) startWebAPI() {
+func (s *Server) router() *mux.Router {
 	mux := mux.NewRouter()
 
 	mux.HandleFunc("/internal/peers", s.webListPeers).Methods("GET")
@@ -28,10 +29,44 @@ func (s *Server) startWebAPI() {
 	mux.HandleFunc("/lookup", s.webLookup).Methods("GET")
 	mux.HandleFunc("/revoke", s.webRevoke).Methods("POST")
 
+	return mux
+}
+
+//startWebAPI creates a router and associated http server to respond with API requests
+func (s *Server) startWebAPI() {
+	mux := s.router()
+
 	fmt.Println("Starting web api")
 
-	//TODO(tcfw) TLS config
-	http.ListenAndServe(":8082", mux)
+	var wg sync.WaitGroup
+
+	if viper.GetBool("http.enabled") {
+		wg.Add(1)
+		go func() {
+			addr := fmt.Sprintf("%s:%d", viper.GetString("http.addr"), viper.GetInt("http.port"))
+			err := http.ListenAndServe(addr, mux)
+			if err != nil {
+				fmt.Printf("[error (http)] %s", err)
+			}
+			wg.Done()
+		}()
+	}
+
+	if viper.GetBool("https.enabled") {
+		wg.Add(1)
+		go func() {
+			addr := fmt.Sprintf("%s:%d", viper.GetString("https.addr"), viper.GetInt("https.port"))
+			key := viper.GetString("https.key")
+			cert := viper.GetString("https.cert")
+			err := http.ListenAndServeTLS(addr, key, cert, mux)
+			if err != nil {
+				fmt.Printf("[error (https)] %s", err)
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
 
 //webListPeers provides a list of peers the node has in it's peer store

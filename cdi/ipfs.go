@@ -11,11 +11,12 @@ import (
 	"github.com/ipfs/go-ipfs/plugin/loader"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	icore "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/spf13/viper"
 )
 
 //createIPFSRepo creates an initial IPFS repo at the default location
 func createIPFSRepo(ctx context.Context) (string, error) {
-	path := DefaultIPFSConfigPath
+	path := viper.GetString("ipfs.config")
 	err := initIPFSConfig(path)
 
 	return path, err

@@ -9,6 +9,7 @@ import (
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	"github.com/ipfs/interface-go-ipfs-core/options"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -19,6 +20,23 @@ const (
 var (
 	bootstrapPeers = []string{}
 )
+
+func init() {
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("ocs")
+
+	viper.SetDefault("ipfs.config", DefaultIPFSConfigPath)
+
+	viper.SetDefault("http.enabled", true)
+	viper.SetDefault("http.addr", "")
+	viper.SetDefault("http.port", 80)
+
+	viper.SetDefault("https.enabled", false)
+	viper.SetDefault("https.addr", "")
+	viper.SetDefault("https.port", 443)
+	viper.SetDefault("https.key", "")
+	viper.SetDefault("https.cert", "")
+}
 
 //initIPFSConfig creates a new IPFS repo and associated config, updating the IPFS bootstrap nodes
 //to the OCS bootstrap nodes

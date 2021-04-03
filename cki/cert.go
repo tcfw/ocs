@@ -363,7 +363,7 @@ func (cert *Certificate) verifySignatureOnly(pkID []byte, pubk PublicKey) error 
 
 //pubAlgo provides the algorithm used for the given public key
 func pubAlgo(pub PublicKey) Algorithm {
-	switch pub.(type) {
+	switch pubType := pub.(type) {
 	case Ed25519Public:
 		return ED25519
 	case *SecpPublicKey:
@@ -378,7 +378,7 @@ func pubAlgo(pub PublicKey) Algorithm {
 			panic("unsupported RSA bit size")
 		}
 	default:
-		panic(fmt.Sprintf("unknown public key algo: %T", pub))
+		panic(fmt.Sprintf("unknown public key algo: %s", pubType))
 	}
 }
 
@@ -389,7 +389,7 @@ func (cert *Certificate) GetPublicKey() (PublicKey, error) {
 
 //privKeyAlgo provides the algorithm used for the private key
 func privKeyAlgo(priv PrivateKey) Algorithm {
-	switch priv.(type) {
+	switch privType := priv.(type) {
 	case *Ed25519Private:
 		return ED25519
 	case *SecpPrivateKey:
@@ -404,6 +404,6 @@ func privKeyAlgo(priv PrivateKey) Algorithm {
 			panic("unsupported RSA bit size")
 		}
 	default:
-		panic(fmt.Sprintf("unknown private key algo: %T", priv))
+		panic(fmt.Sprintf("unknown private key algo: %s", privType))
 	}
 }
