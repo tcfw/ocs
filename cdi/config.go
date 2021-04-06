@@ -22,6 +22,18 @@ var (
 )
 
 func init() {
+	viper.SetConfigType("yaml")
+
+	viper.SetConfigName("cdi")
+	viper.AddConfigPath("/etc/ocs/")
+	viper.AddConfigPath("/user/local/etc/ocs/")
+
+	home, err := os.UserHomeDir()
+	if err == nil {
+		viper.AddConfigPath(fmt.Sprintf("%s/.config/ocs/", home))
+		viper.AddConfigPath(fmt.Sprintf("%s/.ocs/", home))
+	}
+
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("ocs")
 
@@ -65,6 +77,19 @@ func initIPFSConfig(path string) error {
 	cfg, err := config.InitWithIdentity(id)
 	if err != nil {
 		return err
+	}
+
+	cfg.Addresses = config.Addresses{
+		Swarm: []string{
+			"/ip4/0.0.0.0/tcp/4002",
+			"/ip6/::/tcp/4002",
+			"/ip4/0.0.0.0/udp/4002/quic",
+			"/ip6/::/udp/4002/quic",
+		},
+		Announce:   []string{},
+		NoAnnounce: []string{},
+		API:        config.Strings{},
+		Gateway:    config.Strings{},
 	}
 
 	cfg.Bootstrap = bootstrapPeers

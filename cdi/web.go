@@ -36,17 +36,17 @@ func (s *Server) router() *mux.Router {
 func (s *Server) startWebAPI() {
 	mux := s.router()
 
-	fmt.Println("Starting web api")
-
 	var wg sync.WaitGroup
 
 	if viper.GetBool("http.enabled") {
 		wg.Add(1)
 		go func() {
 			addr := fmt.Sprintf("%s:%d", viper.GetString("http.addr"), viper.GetInt("http.port"))
+			fmt.Printf("Starting web api (%s)\n", addr)
+
 			err := http.ListenAndServe(addr, mux)
 			if err != nil {
-				fmt.Printf("[error (http)] %s", err)
+				fmt.Printf("[error (http)] %s\n", err)
 			}
 			wg.Done()
 		}()
@@ -56,11 +56,13 @@ func (s *Server) startWebAPI() {
 		wg.Add(1)
 		go func() {
 			addr := fmt.Sprintf("%s:%d", viper.GetString("https.addr"), viper.GetInt("https.port"))
+			fmt.Printf("Starting web api (https %s)\n", addr)
+
 			key := viper.GetString("https.key")
 			cert := viper.GetString("https.cert")
 			err := http.ListenAndServeTLS(addr, key, cert, mux)
 			if err != nil {
-				fmt.Printf("[error (https)] %s", err)
+				fmt.Printf("[error (https)] %s\n", err)
 			}
 			wg.Done()
 		}()

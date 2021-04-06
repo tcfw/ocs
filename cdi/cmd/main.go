@@ -17,6 +17,8 @@ func main() {
 		Run:   runServer,
 	}
 
+	cmd.Flags().StringP("config", "c", "", "Path to config file")
+
 	cmd.Flags().String("ipfs-config", cdi.DefaultIPFSConfigPath, "ipfs config directory")
 	cmd.Flags().String("http-addr", "", "http listening addr")
 	cmd.Flags().Int("http-port", 80, "http web port")
@@ -41,6 +43,27 @@ func main() {
 }
 
 func runServer(cmd *cobra.Command, args []string) {
+	config, _ := cmd.Flags().GetString("config")
+	if config != "" {
+		fmt.Printf("Reading config file %s...\n", config)
+		f, err := os.Open(config)
+		if err != nil {
+			fmt.Printf("[error] %s\n", err)
+			os.Exit(1)
+		}
+		err = viper.ReadConfig(f)
+		if err != nil {
+			fmt.Printf("[warn] failed to read config file: %s\n", err)
+		}
+
+		f.Close()
+	}
+
+	err := viper.ReadInConfig()
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		fmt.Printf("[warn] failed to read config: %s\n", err)
+	}
+
 	tlsKey, _ := cmd.Flags().GetString("https.key")
 	tlsCert, _ := cmd.Flags().GetString("https.cert")
 
@@ -49,9 +72,9 @@ func runServer(cmd *cobra.Command, args []string) {
 	}
 
 	s := cdi.NewServer()
-	err := s.Start()
+	err = s.Start()
 	if err != nil {
-		fmt.Printf("[error] %s", err)
+		fmt.Printf("[error] %s\n", err)
 		os.Exit(1)
 	}
 

@@ -1,4 +1,4 @@
-# GOENV := CGO_ENABLED=0
+GOENV := CGO_ENABLED=0
 GOBIN := $(GOENV) go
 GOBUILDFLAGS := -ldflags="-s -w"
 
@@ -15,7 +15,4 @@ build-cdi:
 compress:
 	upx bin/*
 
-prod: build compress
-
-lib-cki:
-	$(GOBIN) build -buildmode=shared $(GOBUILDFLAGS) -linkshared github.com/tcfw/ocs/cki
+release: build compress
