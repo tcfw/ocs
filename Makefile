@@ -1,6 +1,6 @@
 # GOENV := CGO_ENABLED=0
 GOBIN := $(GOENV) go
-GOBUILDFLAGS := -ldflags="-s -w" -linkshared
+GOBUILDFLAGS := -ldflags="-s -w"
 
 build: build-ocs build-cdi
 
