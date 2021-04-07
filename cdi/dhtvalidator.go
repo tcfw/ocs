@@ -3,16 +3,13 @@ package cdi
 import (
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"strings"
+	"time"
 
 	icore "github.com/ipfs/interface-go-ipfs-core"
-	"github.com/ipfs/interface-go-ipfs-core/path"
 	records "github.com/libp2p/go-libp2p-record"
 	"github.com/tcfw/ocs/cki"
 	"github.com/vmihailenco/msgpack"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -60,17 +57,7 @@ func (ocsv *ocsValidator) Validate(key string, value []byte) error {
 		return fmt.Errorf("failed to parse value: %s", err)
 	}
 
-	b, err := ocsv.ipfs.Block().Get(context.Background(), path.New(ref.Ref))
-	if err != nil {
-		return fmt.Errorf("failed to fetch cert block: %s", err)
-	}
-
-	d, err := ioutil.ReadAll(io.LimitReader(b, 10<<20))
-	if err != nil {
-		return err
-	}
-
-	cert, err := cki.ParseCertificate(d)
+	cert, err := ref.getCertificate(ocsv.ipfs)
 	if err != nil {
 		return fmt.Errorf("failed to parse cert: %s", err)
 	}
@@ -90,7 +77,44 @@ func (ocsv *ocsValidator) Validate(key string, value []byte) error {
 //Select chooses which value to provide as they get updated in the DHT
 //Currently just returns the first available
 func (ocsv *ocsValidator) Select(key string, values [][]byte) (int, error) {
-	//TODO(tcfw) select against a timestamp in certificate nbf/nat
-	fmt.Printf("TO SELECT: %+v %+v\n", key, values)
-	return 0, nil
+	scores := make(map[int]int, len(values))
+
+	for i, value := range values {
+		ref := &CertRef{}
+		err := msgpack.Unmarshal(value, ref)
+		if err != nil {
+			return 0, err
+		}
+
+		cert, err := ref.getCertificate(ocsv.ipfs)
+		if err != nil {
+			return 0, fmt.Errorf("failed to parse cert: %s", err)
+		}
+
+		scores[i] = ocsv.certScore(cert)
+	}
+
+	ith := 0
+	hScore := ^int(0)
+
+	for i, score := range scores {
+		if score > hScore {
+			ith = i
+			hScore = score
+		}
+	}
+
+	return ith, nil
+}
+
+func (ocsv *ocsValidator) certScore(cert *cki.Certificate) int {
+	score := 0
+
+	score -= int(time.Since(cert.NotBefore) / time.Second)
+	score += int(time.Until(cert.NotAfter) / time.Second)
+
+	//TODO(tcfw) count verified signatures
+	score += len(cert.Signatures)
+
+	return score
 }

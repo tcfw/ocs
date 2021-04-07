@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -162,6 +163,11 @@ func (s *Server) webPublish(w http.ResponseWriter, r *http.Request) {
 
 	path, err := s.certificates.Publish(r.Context(), cert, req)
 	if err != nil {
+		//Reject when we have a 'better' certificate
+		if strings.Contains(err.Error(), "can't replace a newer value with an older value") {
+			http.Error(w, "failed to publish certificate", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, fmt.Sprintf("failed to publish certificate: %s", err), http.StatusInternalServerError)
 		return
 	}
@@ -187,7 +193,7 @@ func (s *Server) webLookup(w http.ResponseWriter, r *http.Request) {
 	switch t {
 	case RefLookup, CertIDLookup, EmailLookup:
 	default:
-		http.Error(w, "unknown lookup type", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("unknown lookup type (%s)", t), http.StatusBadRequest)
 		return
 	}
 

@@ -18,7 +18,9 @@ const (
 )
 
 var (
-	bootstrapPeers = []string{}
+	bootstrapPeers = []string{
+		"/dnsaddr/ocs.tcfw.com.au/p2p/12D3KooWLRcXgKBjN2W4ux6GfVLinkKcVZUV3eb4iWovogiuMdNN",
+	}
 )
 
 func init() {

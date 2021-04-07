@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 
 	blocks "github.com/ipfs/go-block-format"
+	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/tcfw/ocs/cki"
 	"github.com/vmihailenco/msgpack"
@@ -32,6 +33,25 @@ type CertRef struct {
 	Ref           string `msgpack:"r"`
 	Signature     []byte `msgpack:"s"`
 	SignatureData []byte `msgpack:"sd"`
+}
+
+func (cr *CertRef) getCertificate(ipfs icore.CoreAPI) (*cki.Certificate, error) {
+	b, err := ipfs.Block().Get(context.Background(), path.New(cr.Ref))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch cert block: %s", err)
+	}
+
+	d, err := ioutil.ReadAll(io.LimitReader(b, 10<<20))
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := cki.ParseCertificate(d)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse cert: %s", err)
+	}
+
+	return cert, nil
 }
 
 //Lookup represents a lookup request data
@@ -92,6 +112,9 @@ func (scs *IPFSCertStore) Publish(ctx context.Context, c *cki.Certificate, r *Pu
 	fmt.Printf("Publishing DHT key %s\n", certIDRef)
 	err = scs.s.rNode.DHT.PutValue(ctx, certIDRef, refData)
 	if err != nil {
+		if err.Error() == "can't replace a newer value with an older value" {
+			return path, nil
+		}
 		return "", fmt.Errorf("failed to publish cert ID ref: %s", err)
 	}
 

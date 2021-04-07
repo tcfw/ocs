@@ -25,12 +25,6 @@ var (
 	}
 )
 
-//Attach attaches the cki commands to a root/parent command
-func Attach(parent *cobra.Command) {
-	parent.AddCommand(newCmd)
-	parent.AddCommand(pkCmd)
-}
-
 func init() {
 	newCmd.Flags().Bool("nointeraction", false, "Disable UI interaction")
 
@@ -109,13 +103,14 @@ func newCert(cmd *cobra.Command) error {
 		return err
 	}
 
+	cakey, err := cmd.Flags().GetString("cakey")
+	if err != nil {
+		return err
+	}
+
 	var issuer *cki.Certificate
 
 	if !selfsigned {
-		cakey, err := cmd.Flags().GetString("cakey")
-		if err != nil {
-			return err
-		}
 		if cakey == "" {
 			return fmt.Errorf("CA key cannot be empty when not self signing")
 		}
@@ -133,17 +128,15 @@ func newCert(cmd *cobra.Command) error {
 		return err
 	}
 
-	destFile, err := cmd.Flags().GetString("out")
-	if err != nil {
-		return err
-	}
-
 	pem, err := c.PEM()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%+v", destFile)
+	destFile, err := cmd.Flags().GetString("out")
+	if err != nil {
+		return err
+	}
 
 	if destFile == "" {
 		fmt.Printf("%s", pem)

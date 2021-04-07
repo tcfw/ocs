@@ -47,23 +47,7 @@ func newPk(cmd *cobra.Command) error {
 		return err
 	}
 
-	var pk cki.PrivateKey
-
-	switch pkType {
-	case "ed25519":
-		_, pk, err = cki.GenerateEd25519Key()
-	case "p256":
-		_, pk, err = cki.GenerateECKey(cki.ECDSAsecp256r1)
-	case "p384":
-		_, pk, err = cki.GenerateECKey(cki.ECDSAsecp384r1)
-	case "rsa":
-		if bitCount != 2048 && bitCount != 4096 {
-			return fmt.Errorf("unsupposed RSA bit count (must be 2048 or 4096)")
-		}
-		_, pk, err = cki.GenerateRSAKey(bitCount)
-	default:
-		return fmt.Errorf("unknown private key type")
-	}
+	pk, err := generatePkFromType(pkType, bitCount)
 	if err != nil {
 		return err
 	}
@@ -115,4 +99,21 @@ func newPk(cmd *cobra.Command) error {
 	}
 
 	return nil
+}
+
+func generatePkFromType(pkType string, bitCount int) (pk cki.PrivateKey, err error) {
+	switch pkType {
+	case "ed25519":
+		_, pk, err = cki.GenerateEd25519Key()
+	case "p256":
+		_, pk, err = cki.GenerateECKey(cki.ECDSAsecp256r1)
+	case "p384":
+		_, pk, err = cki.GenerateECKey(cki.ECDSAsecp384r1)
+	case "rsa":
+		_, pk, err = cki.GenerateRSAKey(bitCount)
+	default:
+		return nil, fmt.Errorf("unknown private key type")
+	}
+
+	return
 }
