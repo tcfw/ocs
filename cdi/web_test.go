@@ -59,11 +59,9 @@ func TestPublish(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sigData := make([]byte, 0, len(certBytes)+len(nonce))
-	sigData = append(sigData, certBytes...)
-	sigData = append(sigData, nonce...)
+	sigData := append(certBytes, nonce...)
 
-	sig, err := priv.Sign(nonce)
+	sig, err := priv.Sign(sigData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,14 +123,10 @@ func TestBadSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sigData := make([]byte, 0, len(certBytes)+len(nonce))
-	sigData = append(sigData, certBytes...)
-	sigData = append(sigData, nonce...)
-
 	req := &PublishRequest{
 		Cert:      certBytes,
 		Signature: []byte(`badsignature`),
-		Nonce:     sigData,
+		Nonce:     nonce,
 	}
 
 	reqBytes, err := msgpack.Marshal(req)
