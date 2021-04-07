@@ -287,20 +287,8 @@ func (h *Header) sharedKey(cp cki.CertPool, priv cki.PrivateKey, sending bool) (
 	}
 
 	//Get signing certificate
-	if h.sigCert == nil {
-		cert, err := h.findCert(cp, h.CertificateID)
-		if err != nil {
-			return nil, err
-		}
-		h.sigCert = cert
-	}
-
-	if h.intCert == nil {
-		cert, err := h.findCert(cp, h.IntendedCertificateID)
-		if err != nil {
-			return nil, err
-		}
-		h.intCert = cert
+	if err := h.findAssociated(cp); err != nil {
+		return nil, err
 	}
 
 	if h.sigCert == nil || h.intCert == nil { //shouldnt happen
@@ -341,7 +329,7 @@ func (h *Header) sharedKey(cp cki.CertPool, priv cki.PrivateKey, sending bool) (
 		return nil, ErrInvalidPublicKey
 	}
 
-	sk, salt, err := ecdheSharedKey(ecpk, ecpriv, h.EphemeralKDFSalt, 32)
+	sk, salt, err := ecdheSharedKey(ecpk.Curve, ecpk, ecpriv, h.EphemeralKDFSalt, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -349,6 +337,28 @@ func (h *Header) sharedKey(cp cki.CertPool, priv cki.PrivateKey, sending bool) (
 	h.EphemeralKDFSalt = salt
 
 	return sk, nil
+}
+
+//findAssociated attempts to locate and/or download the signing cert and intended cert if they don't
+//already exist
+func (h *Header) findAssociated(cp cki.CertPool) error {
+	if h.sigCert == nil {
+		cert, err := h.findCert(cp, h.CertificateID)
+		if err != nil {
+			return err
+		}
+		h.sigCert = cert
+	}
+
+	if h.intCert == nil {
+		cert, err := h.findCert(cp, h.IntendedCertificateID)
+		if err != nil {
+			return err
+		}
+		h.intCert = cert
+	}
+
+	return nil
 }
 
 //findCert attempts to find a certificate given an idea either embedded in the header, or in the given

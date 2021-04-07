@@ -94,17 +94,9 @@ func (s *Server) webListPeers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(list)
 }
 
-//PublishRequest represents a certificate publish request
-type PublishRequest struct {
-	Cert          []byte `msgpack:"c" json:"c"`
-	Signature     []byte `msgpack:"s" json:"s"`
-	SignatureData []byte `msgpack:"sd" json:"sd"`
-}
-
 //webPublish uses a publish request to publish the certificate to the cert store
 func (s *Server) webPublish(w http.ResponseWriter, r *http.Request) {
 	br := io.LimitReader(r.Body, 10<<20) //10MB limit
-
 	body, err := ioutil.ReadAll(br)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -127,7 +119,7 @@ func (s *Server) webPublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Cert) == 0 || len(req.Signature) == 0 || len(req.SignatureData) != 32 {
+	if len(req.Cert) == 0 || len(req.Signature) == 0 || len(req.Nonce) != 32 {
 		http.Error(w, "invalid request data", http.StatusBadRequest)
 		return
 	}
@@ -149,15 +141,9 @@ func (s *Server) webPublish(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	pk, err := cert.GetPublicKey()
+	err = s.validatePublishRequest(req, cert)
 	if err != nil {
-		http.Error(w, "failed to parse public key", http.StatusInternalServerError)
-		return
-	}
-
-	if !pk.Verify(req.SignatureData, req.Signature) {
-		//Provide somewhere random
-		http.Error(w, "bad signature", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -166,14 +152,37 @@ func (s *Server) webPublish(w http.ResponseWriter, r *http.Request) {
 		//Reject when we have a 'better' certificate
 		if strings.Contains(err.Error(), "can't replace a newer value with an older value") {
 			http.Error(w, "failed to publish certificate", http.StatusBadRequest)
-			return
+		} else {
+			http.Error(w, fmt.Sprintf("failed to publish certificate: %s", err), http.StatusInternalServerError)
 		}
-		http.Error(w, fmt.Sprintf("failed to publish certificate: %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	w.Write([]byte(`OK `))
 	w.Write([]byte(path))
+}
+
+func (s *Server) validatePublishRequest(req *PublishRequest, c *cki.Certificate) error {
+	pk, err := c.GetPublicKey()
+	if err != nil {
+		return fmt.Errorf("failed to parse public key")
+	}
+
+	certBytes, err := c.Bytes()
+	if err != nil {
+		return fmt.Errorf("failed to remarshal certificate")
+	}
+
+	sigData := make([]byte, 0, len(certBytes)+len(req.Nonce))
+	sigData = append(sigData, certBytes...)
+	sigData = append(sigData, req.Nonce...)
+
+	if !pk.Verify(sigData, req.Signature) {
+		return fmt.Errorf("bad signature")
+	}
+
+	return nil
+
 }
 
 func (s *Server) webRevoke(w http.ResponseWriter, r *http.Request) {

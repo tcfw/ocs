@@ -62,12 +62,21 @@ func (ocsv *ocsValidator) Validate(key string, value []byte) error {
 		return fmt.Errorf("failed to parse cert: %s", err)
 	}
 
+	certBytes, err := cert.Bytes()
+	if err != nil {
+		return err
+	}
+
 	pk, err := cert.GetPublicKey()
 	if err != nil {
 		return fmt.Errorf("failed to parse pubcert: %s", err)
 	}
 
-	if !pk.Verify(ref.SignatureData, ref.Signature) {
+	sigData := make([]byte, 0, len(certBytes)+len(ref.Nonce))
+	sigData = append(sigData, certBytes...)
+	sigData = append(sigData, ref.Nonce...)
+
+	if !pk.Verify(sigData, ref.Signature) {
 		return errors.New("bad signature")
 	}
 

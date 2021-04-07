@@ -54,20 +54,24 @@ func TestPublish(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sigData := make([]byte, 32)
-	if _, err := rand.Read(sigData); err != nil {
+	nonce := make([]byte, 32)
+	if _, err := rand.Read(nonce); err != nil {
 		t.Fatal(err)
 	}
 
-	sig, err := priv.Sign(sigData)
+	sigData := make([]byte, 0, len(certBytes)+len(nonce))
+	sigData = append(sigData, certBytes...)
+	sigData = append(sigData, nonce...)
+
+	sig, err := priv.Sign(nonce)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req := &PublishRequest{
-		Cert:          certBytes,
-		Signature:     sig,
-		SignatureData: sigData,
+		Cert:      certBytes,
+		Signature: sig,
+		Nonce:     nonce,
 	}
 
 	reqBytes, err := msgpack.Marshal(req)
@@ -116,15 +120,19 @@ func TestBadSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sigData := make([]byte, 32)
-	if _, err := rand.Read(sigData); err != nil {
+	nonce := make([]byte, 32)
+	if _, err := rand.Read(nonce); err != nil {
 		t.Fatal(err)
 	}
 
+	sigData := make([]byte, 0, len(certBytes)+len(nonce))
+	sigData = append(sigData, certBytes...)
+	sigData = append(sigData, nonce...)
+
 	req := &PublishRequest{
-		Cert:          certBytes,
-		Signature:     []byte(`badsignature`),
-		SignatureData: sigData,
+		Cert:      certBytes,
+		Signature: []byte(`badsignature`),
+		Nonce:     sigData,
 	}
 
 	reqBytes, err := msgpack.Marshal(req)

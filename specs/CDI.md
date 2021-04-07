@@ -82,8 +82,9 @@ Publish requests list certificates for other users of OCS to download. The Publi
 Publish requests SHOULD be in messagepack OR json encoding and MUST include the follow fields:
 
 - "c" the certificate (in raw or PEM)
-- "s" a signature from the private key matching the public key in the certificate
-- "sd" a cryptographically generated random 32 byte slice to be used to generate the signature "s"
+- "n" a cryptographically generated random 32 byte slice to be used to generate the signature
+- "s" a signature from the private key matching the public key in the certificate and nonce such that S(H(c || n))
+  where S is the private key signing function, H is a SHA3-256 hash function, c is the certificate in msgpack encoding and n is the nonce.
 
 When the certificate is supplied in PEM format, the URL MUST include a query parameter of "pem" where the value is "true" (e.g. "/publish?pem=true")
 

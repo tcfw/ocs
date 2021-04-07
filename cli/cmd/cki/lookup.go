@@ -34,54 +34,50 @@ var (
 		},
 	}
 	httpClient = &http.Client{}
+
+	lookupEndpoint string
+	lookupEmails   []string
+	lookupRefs     []string
+	lookupIDs      []string
 )
 
 func init() {
-	lookupCmd.Flags().StringSliceP("email", "e", nil, "Lookup via email")
-	lookupCmd.Flags().StringSliceP("id", "i", nil, "Lookup via id")
-	lookupCmd.Flags().StringSliceP("ref", "r", nil, "Lookup via ref")
-	lookupCmd.Flags().String("endpoint", DefaultEndpoint, "CDI endpoint")
+	lookupCmd.Flags().StringSliceVarP(&lookupEmails, "email", "e", nil, "Lookup via email")
+	lookupCmd.Flags().StringSliceVarP(&lookupIDs, "id", "i", nil, "Lookup via id")
+	lookupCmd.Flags().StringSliceVarP(&lookupRefs, "ref", "r", nil, "Lookup via ref")
+	lookupCmd.Flags().StringVar(&lookupEndpoint, "endpoint", DefaultEndpoint, "CDI endpoint")
 }
 
 func runLookup(cmd *cobra.Command) error {
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		return err
-	}
-	if endpoint == "" {
+	if lookupEndpoint == "" {
 		return fmt.Errorf("invalid endpoint")
 	}
 
 	//Quick URL format check
-	url, err := url.Parse(endpoint)
+	url, err := url.Parse(lookupEndpoint)
 	if err != nil {
 		return err
 	}
 
 	url.Path += "/lookup"
 
-	emails, err := cmd.Flags().GetStringSlice("email")
-	if err != nil {
-		return err
-	}
+	for i, id := range lookupIDs {
+		if strings.Contains(id, ":") {
+			lookupIDs[i], err = decodeColonFormat(lookupIDs[i])
+			if err != nil {
+				return fmt.Errorf("failed to parse id %s", id)
+			}
+		}
 
-	ids, err := cmd.Flags().GetStringSlice("id")
-	if err != nil {
-		return err
-	}
-
-	refs, err := cmd.Flags().GetStringSlice("ref")
-	if err != nil {
-		return err
 	}
 
 	lookups := map[string][]string{
-		"email": emails,
-		"ref":   refs,
-		"id":    ids,
+		"email": lookupEmails,
+		"ref":   lookupRefs,
+		"id":    lookupIDs,
 	}
 
-	n := len(emails) + len(ids) + len(refs)
+	n := len(lookupEmails) + len(lookupIDs) + len(lookupRefs)
 
 	if n == 0 {
 		return fmt.Errorf("at least 1 argument is required")
@@ -96,16 +92,10 @@ func runLookup(cmd *cobra.Command) error {
 	var wg sync.WaitGroup
 	results := make(chan string)
 
+	//Start lookups
 	for t, lookupGroup := range lookups {
 		for _, lookup := range lookupGroup {
 			wg.Add(1)
-
-			if t == "id" && strings.Contains(lookup, ":") {
-				lookup, err = decodeColonFormat(lookup)
-				if err != nil {
-					return fmt.Errorf("failed to parse id %s", lookup)
-				}
-			}
 
 			go func(t string, lookup string) {
 				defer wg.Done()
@@ -119,11 +109,11 @@ func runLookup(cmd *cobra.Command) error {
 	var resWg sync.WaitGroup
 	resWg.Add(1)
 
-	seenIDs := &sync.Map{}
-
 	//Print results
 	go func() {
 		defer resWg.Done()
+
+		seenIDs := &sync.Map{}
 
 		for cert := range results {
 			pCert, _, err := cki.ParsePEMCertificate([]byte(cert))
@@ -132,8 +122,7 @@ func runLookup(cmd *cobra.Command) error {
 				continue
 			}
 
-			_, seen := seenIDs.LoadOrStore(string(pCert.ID), true)
-			if seen {
+			if _, seen := seenIDs.LoadOrStore(string(pCert.ID), true); seen {
 				continue
 			}
 
@@ -144,7 +133,6 @@ func runLookup(cmd *cobra.Command) error {
 
 	wg.Wait()
 	close(results)
-
 	resWg.Wait()
 
 	if resCount.Load() == 0 {

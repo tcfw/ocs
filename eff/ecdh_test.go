@@ -18,12 +18,12 @@ func TestSharedKeyECDH(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sk1, salt, err := ecdheSharedKey(pub2, priv1, nil, 56)
+	sk1, salt, err := ecdheSharedKey(pub2.Curve, pub2, priv1, nil, 56)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sk2, _, err := ecdheSharedKey(pub1, priv2, salt, 56)
+	sk2, _, err := ecdheSharedKey(pub1.Curve, pub1, priv2, salt, 56)
 	if err != nil {
 		t.Fatal(err)
 	}

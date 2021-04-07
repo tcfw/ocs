@@ -109,8 +109,8 @@ func NewCertificate(template Certificate, pub PublicKey, issuer *Certificate, pr
 		return nil, ErrAlreadySigned
 	}
 
-	if template.NotAfter.After(time.Now().Add(365 * 24 * time.Hour)) {
-		template.NotAfter = time.Now().Add(365 * 24 * time.Hour)
+	if template.NotAfter.After(time.Now().Add(10 * 365 * 24 * time.Hour)) {
+		return nil, fmt.Errorf("not-after too far in the future")
 	}
 
 	if template.NotAfter.IsZero() {
@@ -118,7 +118,7 @@ func NewCertificate(template Certificate, pub PublicKey, issuer *Certificate, pr
 	}
 
 	if template.NotBefore.After(template.NotAfter) {
-		return nil, fmt.Errorf("not before cannot be after not after")
+		return nil, fmt.Errorf("not-before cannot be after not-after")
 	}
 
 	if template.CertType == 0 {
@@ -249,7 +249,7 @@ func (cert *Certificate) AddSignature(issuer *Certificate, privk PrivateKey, pub
 	issuerID := issuer.ID
 
 	for _, prevSig := range cert.Signatures {
-		if !bytes.Equal(prevSig.ID, issuerID) {
+		if bytes.Equal(prevSig.ID, issuerID) {
 			return ErrAlreadySigned
 		}
 	}

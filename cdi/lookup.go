@@ -30,9 +30,9 @@ const (
 
 //CertRef represents a certificate reference structure
 type CertRef struct {
-	Ref           string `msgpack:"r"`
-	Signature     []byte `msgpack:"s"`
-	SignatureData []byte `msgpack:"sd"`
+	Ref       string `msgpack:"r"`
+	Signature []byte `msgpack:"s"`
+	Nonce     []byte `msgpack:"n"`
 }
 
 func (cr *CertRef) getCertificate(ipfs icore.CoreAPI) (*cki.Certificate, error) {
@@ -87,7 +87,7 @@ func (scs *IPFSCertStore) Publish(ctx context.Context, c *cki.Certificate, r *Pu
 
 	path := block.Cid().String()
 
-	refs := &CertRef{Ref: path, Signature: r.Signature, SignatureData: r.SignatureData}
+	refs := &CertRef{Ref: path, Signature: r.Signature, Nonce: r.Nonce}
 	refData, err := msgpack.Marshal(refs)
 	if err != nil {
 		return "", err

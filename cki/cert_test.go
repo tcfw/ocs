@@ -30,6 +30,14 @@ func TestCertFuzz(t *testing.T) {
 
 	template.CertType = PKI
 
+	//TODO(tcfw): test err response for invalid date ranges
+	if template.NotAfter.After(time.Now().Add(10 * 365 * 24 * time.Hour)) {
+		template.NotAfter = time.Now().Add(5 * 365 * 24 * time.Hour)
+	}
+	if template.NotBefore.After(time.Now()) {
+		template.NotBefore = time.Now().Add(-1 * 24 * time.Hour)
+	}
+
 	cert, err := NewCertificate(template, pub, nil, priv)
 	if err != nil {
 		t.Fatal(err)

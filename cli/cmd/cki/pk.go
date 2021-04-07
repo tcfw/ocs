@@ -22,32 +22,21 @@ var (
 			}
 		},
 	}
+
+	pkType string
+	pkBits int
+	pkOut  string
 )
 
 func init() {
-	pkCmd.Flags().StringP("type", "t", "p256", "Private key type [ed25519, p256, p384, rsa]")
-	pkCmd.Flags().IntP("bits", "c", 4096, "Number of bits of RSA key")
-	pkCmd.Flags().StringP("out", "o", "", "Destintation file")
+	pkCmd.Flags().StringVarP(&pkType, "type", "t", "p256", "Private key type [ed25519, p256, p384, rsa]")
+	pkCmd.Flags().IntVarP(&pkBits, "bits", "c", 4096, "Number of bits of RSA key")
+	pkCmd.Flags().StringVarP(&pkOut, "out", "o", "", "Destintation file")
 	pkCmd.Flags().StringP("pass", "p", "", "Private key encryption password")
 }
 
 func newPk(cmd *cobra.Command) error {
-	pkType, err := cmd.Flags().GetString("type")
-	if err != nil {
-		return err
-	}
-
-	bitCount, err := cmd.Flags().GetInt("bits")
-	if err != nil {
-		return err
-	}
-
-	destFile, err := cmd.Flags().GetString("out")
-	if err != nil {
-		return err
-	}
-
-	pk, err := generatePkFromType(pkType, bitCount)
+	pk, err := generatePkFromType(pkType, pkBits)
 	if err != nil {
 		return err
 	}
@@ -83,8 +72,8 @@ func newPk(cmd *cobra.Command) error {
 	var dest io.Writer
 	dest = os.Stdout
 
-	if destFile != "" {
-		f, err := os.OpenFile(destFile, os.O_CREATE|os.O_WRONLY, 0600)
+	if pkOut != "" {
+		f, err := os.OpenFile(pkOut, os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
 		}

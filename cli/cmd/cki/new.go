@@ -23,31 +23,49 @@ var (
 			}
 		},
 	}
+
+	newCmdNointeraction  bool
+	newCmdCertType       string
+	newCmdKey            string
+	newCmdOut            string
+	newCmdNotbefore      string
+	newCmdNotafter       string
+	newCmdDays           int
+	newCmdIsSelfSigned   bool
+	newCmdIsCa           bool
+	newCmdCakey          string
+	newCmdSubject        string
+	newCmdEmail          string
+	newCmdEntityName     string
+	newCmdEntityUnit     string
+	newCmdEntityLocality string
+	newCmdEntityState    string
+	newCmdEntityCountry  string
 )
 
 func init() {
-	newCmd.Flags().Bool("nointeraction", false, "Disable UI interaction")
+	newCmd.Flags().BoolVar(&newCmdNointeraction, "nointeraction", false, "Disable UI interaction")
 
-	newCmd.Flags().StringP("mode", "m", "pki", "Certificate Mode [pki, mpki, wot]")
-	newCmd.Flags().StringP("key", "k", "", "Private key to use (in PEM format)")
-	newCmd.Flags().StringP("out", "o", "", "Output file")
+	newCmd.Flags().StringVarP(&newCmdCertType, "mode", "m", "pki", "Certificate Mode [pki, mpki, wot]")
+	newCmd.Flags().StringVarP(&newCmdKey, "key", "k", "", "Private key to use (in PEM format)")
+	newCmd.Flags().StringVarP(&newCmdOut, "out", "o", "", "Output file")
 
-	newCmd.Flags().String("notbefore", "", "Set the not before field")
-	newCmd.Flags().String("notafter", "", "Set the not after field (overrides 'days')")
-	newCmd.Flags().IntP("days", "d", 30, "Number of days until the certificate should expire")
+	newCmd.Flags().StringVar(&newCmdNotbefore, "notbefore", "", "Set the not before field")
+	newCmd.Flags().StringVar(&newCmdNotafter, "notafter", "", "Set the not after field (overrides 'days')")
+	newCmd.Flags().IntVarP(&newCmdDays, "days", "d", 30, "Number of days until the certificate should expire")
 
-	newCmd.Flags().Bool("selfsign", false, "Self-sign the certificate")
-	newCmd.Flags().Bool("ca", false, "Set CA flag in certificate")
-	newCmd.Flags().String("cakey", "", "Certificate Authority private key (in PEM format)")
+	newCmd.Flags().BoolVar(&newCmdIsSelfSigned, "selfsign", false, "Self-sign the certificate")
+	newCmd.Flags().BoolVar(&newCmdIsCa, "ca", false, "Set CA flag in certificate")
+	newCmd.Flags().StringVar(&newCmdCakey, "cakey", "", "Certificate Authority private key (in PEM format)")
 
-	newCmd.Flags().StringP("subject", "s", "", "Certificate subject")
-	newCmd.Flags().String("email", "", "Email address")
+	newCmd.Flags().StringVarP(&newCmdSubject, "subject", "s", "", "Certificate subject")
+	newCmd.Flags().StringVar(&newCmdEmail, "email", "", "Email address")
 
-	newCmd.Flags().String("entityName", "", "Entity name")
-	newCmd.Flags().String("entityUnit", "", "Entity organisation unit")
-	newCmd.Flags().String("entityLocality", "", "Entity locality")
-	newCmd.Flags().String("entityState", "", "Entity state")
-	newCmd.Flags().String("entityCountry", "", "Entity country")
+	newCmd.Flags().StringVar(&newCmdEntityName, "entityName", "", "Entity name")
+	newCmd.Flags().StringVar(&newCmdEntityUnit, "entityUnit", "", "Entity organisation unit")
+	newCmd.Flags().StringVar(&newCmdEntityLocality, "entityLocality", "", "Entity locality")
+	newCmd.Flags().StringVar(&newCmdEntityState, "entityState", "", "Entity state")
+	newCmd.Flags().StringVar(&newCmdEntityCountry, "entityCountry", "", "Entity country")
 }
 
 func newCert(cmd *cobra.Command) error {
@@ -56,27 +74,13 @@ func newCert(cmd *cobra.Command) error {
 		return err
 	}
 
-	isCa, err := cmd.Flags().GetBool("ca")
+	certType, err := getCertType()
 	if err != nil {
 		return err
 	}
 
-	subject, err := cmd.Flags().GetString("subject")
-	if err != nil {
-		return err
-	}
-
-	certType, err := getCertType(cmd)
-	if err != nil {
-		return err
-	}
-
-	email, err := cmd.Flags().GetString("email")
-	if err != nil {
-		return err
-	}
 	if certType == cki.WOT {
-		subject = email
+		newCmdSubject = newCmdEmail
 	}
 
 	entity, err := readEntity(cmd)
@@ -88,14 +92,9 @@ func newCert(cmd *cobra.Command) error {
 		CertType:  certType,
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
-		IsCA:      isCa,
-		Subject:   subject,
+		IsCA:      newCmdIsCa,
+		Subject:   newCmdSubject,
 		Entity:    entity,
-	}
-
-	selfsigned, err := cmd.Flags().GetBool("selfsign")
-	if err != nil {
-		return err
 	}
 
 	pubk, privk, err := readPubPriv(cmd, "key")
@@ -103,15 +102,10 @@ func newCert(cmd *cobra.Command) error {
 		return err
 	}
 
-	cakey, err := cmd.Flags().GetString("cakey")
-	if err != nil {
-		return err
-	}
-
 	var issuer *cki.Certificate
 
-	if !selfsigned {
-		if cakey == "" {
+	if !newCmdIsSelfSigned {
+		if newCmdCakey == "" {
 			return fmt.Errorf("CA key cannot be empty when not self signing")
 		}
 
@@ -133,17 +127,12 @@ func newCert(cmd *cobra.Command) error {
 		return err
 	}
 
-	destFile, err := cmd.Flags().GetString("out")
-	if err != nil {
-		return err
-	}
-
-	if destFile == "" {
+	if newCmdOut == "" {
 		fmt.Printf("%s", pem)
 		return nil
 	}
 
-	f, err := os.OpenFile(destFile, os.O_CREATE|os.O_RDWR, 0600)
+	f, err := os.OpenFile(newCmdOut, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return err
 	}
@@ -196,44 +185,15 @@ func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey
 
 func readEntity(cmd *cobra.Command) (*cki.Entity, error) {
 	var entity *cki.Entity
+	email := newCmdEmail
 
-	email, err := cmd.Flags().GetString("email")
-	if err != nil {
-		return nil, err
-	}
-
-	noninteract, err := cmd.Flags().GetBool("nointeraction")
-	if err != nil {
-		return nil, err
-	}
-	if noninteract {
-		name, err := cmd.Flags().GetString("entityName")
-		if err != nil {
-			return nil, err
-		}
-		unit, err := cmd.Flags().GetString("entityUnit")
-		if err != nil {
-			return nil, err
-		}
-		locality, err := cmd.Flags().GetString("entityLocality")
-		if err != nil {
-			return nil, err
-		}
-		state, err := cmd.Flags().GetString("entityState")
-		if err != nil {
-			return nil, err
-		}
-		country, err := cmd.Flags().GetString("entityCountry")
-		if err != nil {
-			return nil, err
-		}
-
+	if newCmdNointeraction {
 		entity = &cki.Entity{
-			Name:     name,
-			Unit:     unit,
-			Locality: locality,
-			State:    state,
-			Country:  country,
+			Name:     newCmdEntityName,
+			Unit:     newCmdEntityUnit,
+			Locality: newCmdEntityLocality,
+			State:    newCmdEntityState,
+			Country:  newCmdEntityCountry,
 			Email:    email,
 		}
 	} else {
@@ -285,35 +245,21 @@ func readEntity(cmd *cobra.Command) (*cki.Entity, error) {
 
 func calcNotBeforeAfter(cmd *cobra.Command) (time.Time, time.Time, error) {
 	var notBefore, notAfter time.Time
+	var err error
 
-	notBeforeRaw, err := cmd.Flags().GetString("notbefore")
-	if err != nil {
-		return notBefore, notAfter, err
-	}
-
-	notAfterRaw, err := cmd.Flags().GetString("notafter")
-	if err != nil {
-		return notBefore, notAfter, err
-	}
-
-	days, err := cmd.Flags().GetInt("days")
-	if err != nil {
-		return notBefore, notAfter, err
-	}
-
-	if notBeforeRaw != "" {
-		notBefore, err = time.Parse(time.RFC3339, notBeforeRaw)
+	if newCmdNotbefore != "" {
+		notBefore, err = time.Parse(time.RFC3339, newCmdNotbefore)
 		if err != nil {
 			return notBefore, notAfter, err
 		}
 	}
-	if notAfterRaw == "" {
-		if days < 1 {
+	if newCmdNotafter == "" {
+		if newCmdDays < 1 {
 			return notBefore, notAfter, fmt.Errorf("invalid certificate validity dates")
 		}
-		notAfter = time.Now().Add(time.Duration(days) * 24 * time.Hour)
+		notAfter = time.Now().Add(time.Duration(newCmdDays) * 24 * time.Hour)
 	} else {
-		notAfter, err = time.Parse(time.RFC3339, notAfterRaw)
+		notAfter, err = time.Parse(time.RFC3339, newCmdNotafter)
 		if err != nil {
 			return notBefore, notAfter, err
 		}
@@ -322,15 +268,10 @@ func calcNotBeforeAfter(cmd *cobra.Command) (time.Time, time.Time, error) {
 	return notBefore, notAfter, nil
 }
 
-func getCertType(cmd *cobra.Command) (cki.CertificateType, error) {
-	modeRaw, err := cmd.Flags().GetString("mode")
-	if err != nil {
-		return cki.UnknownCertType, err
-	}
-
+func getCertType() (cki.CertificateType, error) {
 	var mode cki.CertificateType
 
-	switch modeRaw {
+	switch newCmdCertType {
 	case "pki":
 		mode = cki.PKI
 	case "mpki":
