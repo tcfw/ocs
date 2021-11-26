@@ -1,23 +1,26 @@
-GOENV := CGO_ENABLED=0
-GOBIN := $(GOENV) go
-GOBUILDFLAGS := -ldflags="-s -w"
+GOENV ?= CGO_ENABLED=0
+GOBIN ?= $(GOENV) go
+GOBUILDFLAGS ?= -ldflags="-s -w"
 
-DOCKER_REPO := tcfw
-DOCKER_TAG := latest
-DOCKER_CMD := docker
-DOCKER_BUILD_CMD := $(DOCKER_CMD) build
+BINDIR ?= bin
 
-GIT_COMMIT := $(shell git log -1 --format=%h)
+DOCKER_REPO ?= tcfw
+DOCKER_TAG ?= latest
+DOCKER_CMD ?= docker
+DOCKER_BUILD_CMD ?= $(DOCKER_CMD) build
+
+GIT_COMMIT ?= $(shell git log -1 --format=%h)
+VERSION ?= unspecified
 
 build: build-ocs build-cdi
 
 build-ocs:
-	@mkdir -p bin
-	$(GOBIN) build $(GOBUILDFLAGS) -o bin/ocs ./cli
+	@mkdir -p $(BINDIR)
+	$(GOBIN) build $(GOBUILDFLAGS) -o $(BINDIR)/ocs ./cli
 
 build-cdi:
-	@mkdir -p bin
-	$(GOBIN) build $(GOBUILDFLAGS) -o bin/ocs-cdi ./cdi/cmd
+	@mkdir -p $(BINDIR)
+	$(GOBIN) build $(GOBUILDFLAGS) -o $(BINDIR)/ocs-cdi ./cdi/cmd
 
 compress:
 	upx bin/*
@@ -25,7 +28,7 @@ compress:
 release: build compress
 
 clean:
-	rm ./bin/*
+	rm -r ./bin/*
 
 deep-clean: clean
 	go clean -cache -testcache

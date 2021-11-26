@@ -178,7 +178,7 @@ func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey
 		return nil, nil, err
 	}
 
-	pubk := pk.PublicKey()
+	pubk := pk.Public()
 
 	return pubk, pk, nil
 }

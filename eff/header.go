@@ -210,7 +210,7 @@ func (h *Header) Encrypt(cp cki.CertPool, pk cki.PrivateKey, d []byte) ([]byte, 
 func (h *Header) sign(pk cki.PrivateKey, d []byte) error {
 	digest := sha3.Sum384(d)
 
-	s, err := pk.Sign(digest[:])
+	s, err := pk.Sign(rand.Reader, digest[:], nil)
 	if err != nil {
 		return err
 	}
@@ -295,7 +295,7 @@ func (h *Header) sharedKey(cp cki.CertPool, priv cki.PrivateKey, sending bool) (
 		return nil, ErrNoMatchingCertificates
 	}
 
-	expectedPubK, err := priv.PublicKey().Bytes()
+	expectedPubK, err := priv.Public().Bytes()
 	if err != nil {
 		return nil, err
 	}

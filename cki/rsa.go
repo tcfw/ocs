@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
+	"io"
 )
 
 //GenerateRSAKey generates a new RSA public/private key
@@ -71,7 +72,7 @@ type RSAPrivateKey struct {
 }
 
 //Sign creates a PKCS1v15 RSA signature of the given byte slice over a SHA2-384 hash
-func (privk *RSAPrivateKey) Sign(d []byte) ([]byte, error) {
+func (privk *RSAPrivateKey) Sign(_ io.Reader, d []byte, _ crypto.SignerOpts) ([]byte, error) {
 	h := sha512.Sum384(d)
 
 	return rsa.SignPKCS1v15(rand.Reader, privk.PrivateKey, crypto.SHA384, h[:])
@@ -82,7 +83,7 @@ func (privk *RSAPrivateKey) Bytes() ([]byte, error) {
 	return x509.MarshalPKCS1PrivateKey(privk.PrivateKey), nil
 }
 
-//PublicKey provides the RSA public key
-func (privk *RSAPrivateKey) PublicKey() PublicKey {
+//Public provides the RSA public key
+func (privk *RSAPrivateKey) Public() PublicKey {
 	return &RSAPublicKey{privk.PrivateKey.PublicKey}
 }

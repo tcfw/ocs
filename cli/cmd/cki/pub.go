@@ -130,7 +130,7 @@ func newPublishRequest(c *cki.Certificate, pk cki.PrivateKey) (*cdi.PublishReque
 	sigData = append(sigData, certBytes...)
 	sigData = append(sigData, req.Nonce...)
 
-	req.Signature, err = pk.Sign(sigData)
+	req.Signature, err = pk.Sign(rand.Reader, sigData, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signature: %s", err)
 	}

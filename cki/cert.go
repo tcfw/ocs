@@ -69,6 +69,7 @@ type Signature struct {
 
 //Certificate an OCS certificate representation
 type Certificate struct {
+	Raw        []byte          `msgpack:"-"`
 	Version    uint8           `msgpack:"v"`
 	CertType   CertificateType `msgpack:"t"`
 	Algo       Algorithm       `msgpack:"a"`
@@ -81,14 +82,9 @@ type Certificate struct {
 	Subject    string          `msgpack:"sb"`
 	Entity     *Entity         `msgpack:"e,omitempty"`
 	Signatures []Signature     `msgpack:"s"`
+	Extensions []Extension     `msgpack:"x,omitempty"`
 
 	publicKey PublicKey
-}
-
-//PublicKey an OCS compatible public key
-type PublicKey interface {
-	Verify(msg []byte, sig []byte) bool
-	Bytes() ([]byte, error)
 }
 
 //NewCertificate generates a new OCS certificate based on a template, a public certificate and a signing private certificate
@@ -100,6 +96,8 @@ type PublicKey interface {
 //  - Revoked
 //  - NotAfter if is not zero and is not over 365 days in the future from the current time
 func NewCertificate(template Certificate, pub PublicKey, issuer *Certificate, priv PrivateKey) (*Certificate, error) {
+	template.Raw = nil
+
 	template.Version = 1
 	if template.NotBefore.Before(time.Now()) {
 		template.NotBefore = time.Now()
@@ -150,6 +148,10 @@ func NewCertificate(template Certificate, pub PublicKey, issuer *Certificate, pr
 		return nil, err
 	}
 
+	if err := template.finalise(); err != nil {
+		return nil, err
+	}
+
 	return &template, nil
 }
 
@@ -164,6 +166,10 @@ func ParseCertificate(d []byte) (*Certificate, error) {
 
 	pk, err := ParsePublicKey(cert.Algo, cert.PublicKey)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := cert.finalise(); err != nil {
 		return nil, err
 	}
 
@@ -194,7 +200,14 @@ func ParsePEMCertificate(d []byte) (*Certificate, []byte, error) {
 
 //Bytes provides a raw msgpack encoded certificate
 func (cert *Certificate) Bytes() ([]byte, error) {
-	return cert.Marshal()
+	if len(cert.Raw) == 0 {
+		_, err := cert.Marshal()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cert.Raw, nil
 }
 
 //validate checks required properties of the certificate
@@ -244,6 +257,16 @@ func (cert *Certificate) validate() error {
 	return nil
 }
 
+func (cert *Certificate) finalise() error {
+	raw, err := cert.Bytes()
+	if err != nil {
+		return err
+	}
+
+	cert.Raw = raw
+	return nil
+}
+
 //AddSignature adds a new signature to the certificate
 func (cert *Certificate) AddSignature(issuer *Certificate, privk PrivateKey, pubRef []byte) error {
 	issuerID := issuer.ID
@@ -260,7 +283,7 @@ func (cert *Certificate) AddSignature(issuer *Certificate, privk PrivateKey, pub
 		return fmt.Errorf("failed to prepare signature data: %s", err)
 	}
 
-	signature, err := privk.Sign(sigInfo)
+	signature, err := privk.Sign(rand.Reader, sigInfo, nil)
 	if err != nil {
 		return fmt.Errorf("failed to sign certificate: %s", err)
 	}
@@ -273,12 +296,23 @@ func (cert *Certificate) AddSignature(issuer *Certificate, privk PrivateKey, pub
 		Signature: signature,
 	})
 
+	if err := cert.finalise(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 //Marshal returns the certificate in msgpack encoding
 func (cert *Certificate) Marshal() ([]byte, error) {
-	return msgpack.Marshal(cert)
+	raw, err := msgpack.Marshal(cert)
+	if err != nil {
+		return nil, err
+	}
+
+	cert.Raw = raw
+
+	return cert.Raw, nil
 }
 
 //PEM encodes the certificate and the returned slice in a PEM block encoding
@@ -301,16 +335,17 @@ func (cert *Certificate) PEM() ([]byte, error) {
 func (cert *Certificate) marshalForSignature(pkID []byte) ([]byte, error) {
 	d, err := msgpack.Marshal(
 		Certificate{
-			ID:        cert.ID,
-			Version:   cert.Version,
-			Revoke:    cert.Revoke,
-			Algo:      cert.Algo,
-			PublicKey: cert.PublicKey,
-			Subject:   cert.Subject,
-			NotBefore: cert.NotBefore,
-			NotAfter:  cert.NotAfter,
-			CertType:  cert.CertType,
-			Entity:    cert.Entity,
+			ID:         cert.ID,
+			Version:    cert.Version,
+			Revoke:     cert.Revoke,
+			Algo:       cert.Algo,
+			PublicKey:  cert.PublicKey,
+			Subject:    cert.Subject,
+			NotBefore:  cert.NotBefore,
+			NotAfter:   cert.NotAfter,
+			CertType:   cert.CertType,
+			Entity:     cert.Entity,
+			Extensions: cert.Extensions,
 		})
 	if err != nil {
 		return nil, err

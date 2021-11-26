@@ -1,6 +1,17 @@
 package cki
 
-import "errors"
+import (
+	"crypto"
+	"errors"
+)
+
+//PublicKey an OCS compatible public key
+type PublicKey interface {
+	crypto.PublicKey
+
+	Verify(msg []byte, sig []byte) bool
+	Bytes() ([]byte, error)
+}
 
 //ParsePublicKey unmarshals a public key
 func ParsePublicKey(a Algorithm, d []byte) (PublicKey, error) {

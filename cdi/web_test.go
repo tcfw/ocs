@@ -61,7 +61,7 @@ func TestPublish(t *testing.T) {
 
 	sigData := append(certBytes, nonce...)
 
-	sig, err := priv.Sign(sigData)
+	sig, err := priv.Sign(rand.Reader, sigData, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

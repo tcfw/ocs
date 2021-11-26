@@ -43,7 +43,7 @@ Certificates must be encoded using MessagePack (msgpack) - See https://msgpack.o
 ### Basic Fields
 
 Version, CertType, Algo, ID, PublicKey, Subject, NotBefore and NotAfter MUST have a value.
-Optionally, Entity, IsCA and Revoke MAY be set.
+Optionally, Entity, IsCA, Extensions and Revoke MAY be set.
 
 For signatures, the data is to be encoded using msgpack.
 
@@ -61,6 +61,7 @@ Certificate fields MUST use the shorthand map key as follows when encoded using 
 - "s": Subject as a string
 - "e": Entity (structure)
 - "s": Signature list (go slice)
+- "x": Extension
 
 Entity fields MUST use the shorthand map key as follows when encoded using MessagePack:
 
@@ -77,6 +78,11 @@ Signature fields MUST use the shorthand map key as follows when encoded using Me
 - "a": Algorithm as uint8
 - "s": Signature as a byte slice
 - "p": Public Reference as byte slice
+
+Extension fields MUST use the shorthand map key as follos when encoded using MessagePack:
+
+- "t": Type as uint16
+- "d": Data as byte slice
 
 ### CertType
 
@@ -151,3 +157,7 @@ The encoding of the public key depends on the type of algorithm used when genera
 ### Encrypted Private Keys
 
 Private keys should be stored in the encrypted format. The private key MUST be encrypted in AES-256-GCM using a argon2id derived key (times: 2, memory: 64kb, threads: 2) with a cryptographically random salt of 32 byte. The salt should be stored at the beginning of the byte slice followed by a nonce. The salt MUST be used as additional data in the encryption.
+
+### Extensions
+
+Extensions allow storing optional additional or abitrary data within the certificates. Each extensions must have a registered type ID set as a unsigned 16 bit integer acompanied by a byte slice of data related to the type. 

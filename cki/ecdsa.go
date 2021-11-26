@@ -1,10 +1,12 @@
 package cki
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
+	"io"
 	"math/big"
 
 	"github.com/vmihailenco/msgpack"
@@ -99,7 +101,7 @@ type SecpPrivateKey struct {
 }
 
 //Sign a msg using ECDSA using the key
-func (secpk *SecpPrivateKey) Sign(d []byte) ([]byte, error) {
+func (secpk *SecpPrivateKey) Sign(_ io.Reader, d []byte, _ crypto.SignerOpts) ([]byte, error) {
 	r, s, err := ecdsa.Sign(rand.Reader, &secpk.PrivateKey, d)
 	if err != nil {
 		return nil, err
@@ -126,8 +128,8 @@ func (secpk *SecpPrivateKey) Bytes() ([]byte, error) {
 	return msgpack.Marshal(ec)
 }
 
-//PublicKey provides the EC public key
-func (secpk *SecpPrivateKey) PublicKey() PublicKey {
+//Public provides the EC public key
+func (secpk *SecpPrivateKey) Public() PublicKey {
 	return &SecpPublicKey{secpk.PrivateKey.PublicKey, secpk.algo}
 }
 

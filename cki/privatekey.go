@@ -1,6 +1,7 @@
 package cki
 
 import (
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -26,9 +27,35 @@ const (
 
 //PrivateKey to create signatures
 type PrivateKey interface {
-	Sign([]byte) ([]byte, error)
+	Sign(io.Reader, []byte, crypto.SignerOpts) ([]byte, error)
 	Bytes() ([]byte, error)
-	PublicKey() PublicKey
+	Public() PublicKey
+}
+
+func castSigner(p PrivateKey) crypto.Signer {
+	return &cryptoSigner{p}
+}
+
+type cryptoSigner struct {
+	p PrivateKey
+}
+
+func (cs *cryptoSigner) Public() crypto.PublicKey {
+	pk := cs.p.Public()
+
+	switch pk.(type) {
+	case *SecpPublicKey:
+		return &pk.(*SecpPublicKey).PublicKey
+	case *Ed25519Public:
+		return pk.(*Ed25519Public)
+	case *RSAPublicKey:
+		return &pk.(*RSAPublicKey).PublicKey
+	default:
+		return pk
+	}
+}
+func (cs *cryptoSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return cs.p.Sign(rand, digest, opts)
 }
 
 //MarshalPrivateKey encodes a private key into msgpack encoding
