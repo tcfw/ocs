@@ -8,3 +8,9 @@ type Extension struct {
 	Type ExtensionType `msgpack:"t"`
 	Data []byte        `msgpack:"d"`
 }
+
+const (
+	UnknownExtensionType ExtensionType = iota
+	AdditionalSubject
+	Serial
+)

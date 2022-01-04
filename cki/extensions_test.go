@@ -10,7 +10,7 @@ func TestBasicExtensionMarshal(t *testing.T) {
 	template := Certificate{
 		Extensions: []Extension{
 			{Type: ExtensionType(1), Data: []byte("test extension")},
-			{Type: ExtensionType(2), Data: []byte("test extension 2")},
+			{Type: AdditionalSubject, Data: []byte("test extension 2")},
 		},
 	}
 
@@ -50,7 +50,7 @@ func TestExtensionSignatureInclusion(t *testing.T) {
 	template := Certificate{
 		Extensions: []Extension{
 			{Type: ExtensionType(1), Data: []byte("test extension")},
-			{Type: ExtensionType(2), Data: []byte("test extension 2")},
+			{Type: AdditionalSubject, Data: []byte("test extension 2")},
 		},
 	}
 

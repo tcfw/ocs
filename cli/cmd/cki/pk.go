@@ -82,7 +82,7 @@ func newPk(cmd *cobra.Command) error {
 		dest = f
 	}
 
-	err = cki.MarshalPEMPrivateKey(raw, dest, password != "")
+	err = cki.MarshalPEMRawPrivateKey(raw, dest, password != "")
 	if err != nil {
 		return err
 	}
