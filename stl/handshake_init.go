@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 )
 
@@ -177,6 +178,8 @@ func (c *Conn) initHandshake(ctx context.Context) error {
 		return err
 	}
 
+	atomic.StoreUint32(&c.state, connState_wait_handshake)
+
 	hs := &InitHelloState{
 		c:       c,
 		ctx:     ctx,
@@ -213,10 +216,12 @@ func (hs *InitHelloState) handshake() error {
 		return err
 	}
 
-	if _, ok := msg.(FinishFrame); !ok {
+	if _, ok := msg.(*FinishFrame); !ok {
 		hs.c.sendError(ErrorCode_UnexpectedFrame)
 		return errors.New("unexpected frame, was expecting finish")
 	}
+
+	atomic.StoreUint32(&hs.c.state, connState_connected)
 
 	return nil
 }
@@ -275,6 +280,7 @@ func (hs *InitHelloState) processResponse() error {
 		hs.c.sendError(ErrorCode_BadParameters)
 		return errors.New("stl: server responded with mismatching version")
 	}
+	hs.c.version = hs.response.Version
 
 	if hs.c.config.AllowedTimeDiff != 0 {
 		iTime := time.Unix(int64(hs.response.Epoch), 0)
@@ -318,6 +324,8 @@ func (hs *InitHelloState) setCiphers() error {
 	hs.c.in.cipher = inc
 	hs.c.out.cipher = outc
 
+	hs.c.suite = hs.response.Suite
+
 	return nil
 }
 
@@ -352,7 +360,9 @@ func (hs *InitHelloState) sendExtraInfo() error {
 		}
 
 		_, err = hs.c.writeFrame(FrameType_Info, b)
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -360,5 +370,11 @@ func (hs *InitHelloState) sendExtraInfo() error {
 
 func (hs *InitHelloState) sendFinish() error {
 	_, err := hs.c.writeFrame(FrameType_Finish, []byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
-	return err
+	if err != nil {
+		return err
+	}
+
+	atomic.StoreUint32(&hs.c.state, connState_wait_finish)
+
+	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -184,7 +185,10 @@ func TestResponseBasicParams(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		ih := &InitHelloState{
 			c:       sc,
 			ctx:     context.Background(),
@@ -208,6 +212,17 @@ func TestResponseBasicParams(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	wg.Wait()
+
+	cState := c.State()
+	scState := sc.State()
+
+	assert.True(t, cState.HandshakeComplete)
+	assert.True(t, scState.HandshakeComplete)
+
+	assert.Equal(t, cState.Version, scState.Version)
+	assert.Equal(t, cState.Suite, scState.Suite)
 }
 
 // func testHandshake(t *testing.T, clientConfig, serverConfig *Config) (clientState, serverState *State, err error) {

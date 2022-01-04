@@ -544,5 +544,11 @@ func (hs *ResponseHelloState) processInfo() error {
 
 func (hs *ResponseHelloState) sendFinish() error {
 	_, err := hs.c.writeFrame(FrameType_Finish, []byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
-	return err
+	if err != nil {
+		return err
+	}
+
+	atomic.StoreUint32(&hs.c.state, connState_wait_finish)
+
+	return nil
 }

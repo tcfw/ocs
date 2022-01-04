@@ -472,7 +472,7 @@ type State struct {
 	PeerCertificates  []*Certificate
 }
 
-func (c *Conn) State() (state State, err error) {
+func (c *Conn) State() (state State) {
 	state.Version = c.version
 	state.Suite = c.suite
 	state.HandshakeComplete = c.isHandshakeComplete()
