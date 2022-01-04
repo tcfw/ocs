@@ -15,6 +15,7 @@ See the specs/ for details.
 - cki - Certificate and key infrastructure - WIP
 - cdi - Certificate distribution infrastructure - Research
 - eff - Encrypted file format - Research
+- stl - Secure Transport Layer - Research
 
 ## Contribution
 
