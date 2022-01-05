@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 	"golang.org/x/crypto/sha3"
 )
 
