@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/spf13/viper"
 	"github.com/tcfw/ocs/cki"
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const (

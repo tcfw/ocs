@@ -1,4 +1,4 @@
-GOENV ?= CGO_ENABLED=0
+GOENV ?= #CGO_ENABLED=0
 GOBIN ?= $(GOENV) go
 GOBUILDFLAGS ?= -ldflags="-s -w"
 

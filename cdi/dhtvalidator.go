@@ -9,7 +9,7 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	records "github.com/libp2p/go-libp2p-record"
 	"github.com/tcfw/ocs/cki"
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const (

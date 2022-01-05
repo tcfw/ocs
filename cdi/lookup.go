@@ -12,7 +12,7 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/tcfw/ocs/cki"
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -80,7 +80,7 @@ func (scs *IPFSCertStore) Publish(ctx context.Context, c *cki.Certificate, r *Pu
 
 	block := blocks.NewBlock(d)
 
-	err = scs.s.rNode.Blocks.AddBlock(block)
+	err = scs.s.rNode.Blocks.AddBlock(ctx, block)
 	if err != nil {
 		return "", err
 	}

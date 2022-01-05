@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tcfw/ocs/cdi"
 	"github.com/tcfw/ocs/cki"
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var (
