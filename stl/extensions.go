@@ -72,11 +72,25 @@ type Certificate struct {
 }
 
 func (c *Certificate) Marshal() ([]byte, error) {
-	return nil, nil
+	buf := bytes.NewBuffer(nil)
+
+	buf.WriteByte(byte(c.CertificateType))
+	binary.Write(buf, binary.BigEndian, uint16(len(c.Certificate)))
+	buf.Write(c.Certificate)
+	buf.Write(c.Verify)
+
+	return buf.Bytes(), nil
 
 }
 
 func (c *Certificate) Unmarshal(d []byte) error {
+	c.CertificateType = CertificateType(d[0])
+
+	certLen := binary.BigEndian.Uint16(d[1:])
+
+	c.Certificate = d[3 : 3+certLen]
+	c.Verify = d[3+certLen:]
+
 	return nil
 }
 

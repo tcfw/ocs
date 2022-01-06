@@ -3,7 +3,6 @@ package stl
 import (
 	"context"
 	"crypto/rand"
-	"net"
 	"sync"
 	"testing"
 	"time"
@@ -155,10 +154,8 @@ func TestMarshalEncryptedResponseHello(t *testing.T) {
 
 func TestResponseBasicParams(t *testing.T) {
 	config := defaultConfig()
-	config.Time = func() time.Time {
-		t, _ := time.Parse("02 Jan 06 15:04 MST", "02 Jan 06 15:04 MST")
-		return t
-	}
+	config.Time = func() time.Time { return time.Unix(0, 0) }
+	config.Rand = zeroSource{}
 
 	certPem, privPEM := generateTestCert(t, "example.com")
 
@@ -168,7 +165,7 @@ func TestResponseBasicParams(t *testing.T) {
 	}
 	config.Certificates = []CertificatePair{cp}
 
-	r, w := net.Pipe()
+	r, w := localPipe(t) //net.Pipe()
 
 	c := &Conn{
 		conn:   w,

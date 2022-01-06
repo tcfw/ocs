@@ -208,7 +208,7 @@ func CKIKeyPair(certPEMBlock, keyPEMBlock []byte) (CertificatePair, error) {
 }
 
 func makeCertificateExtensions(c CertificatePair, verifyData []byte, rand io.Reader) ([]Extension, error) {
-	exts := make([]Extension, len(c.Certificate))
+	exts := make([]Extension, 0, len(c.Certificate))
 
 	for i, cert := range c.Certificate {
 
@@ -235,6 +235,8 @@ func makeCertificateExtensions(c CertificatePair, verifyData []byte, rand io.Rea
 		}
 
 		ext.Data = b
+
+		exts = append(exts, ext)
 	}
 
 	return exts, nil
@@ -242,6 +244,7 @@ func makeCertificateExtensions(c CertificatePair, verifyData []byte, rand io.Rea
 
 func makeCertVerifySig(p crypto.PrivateKey, data []byte, rand io.Reader) ([]byte, error) {
 	h := sha512.Sum384(data)
+
 	switch t := p.(type) {
 	case *rsa.PrivateKey:
 		return rsa.SignPKCS1v15(rand, p.(*rsa.PrivateKey), crypto.SHA384, h[:])
@@ -251,8 +254,67 @@ func makeCertVerifySig(p crypto.PrivateKey, data []byte, rand io.Reader) ([]byte
 		sig := ed25519.Sign(p.(ed25519.PrivateKey), h[:])
 		return sig, nil
 	case cki.PrivateKey:
-		return p.(cki.PrivateKey).Sign(rand, data, nil)
+		return p.(cki.PrivateKey).Sign(rand, h[:], nil)
 	default:
 		return nil, fmt.Errorf("unsupported private key type %T", t)
 	}
+}
+
+func verifyCertSignature(c *Certificate, data []byte) error {
+	switch c.CertificateType {
+	case CertificateType_X509:
+		return verifyX509Signature(c, data)
+	case CertificateType_CKI:
+		return verifyCKISignature(c, data)
+	default:
+		return errors.New("unknown certificate type")
+	}
+}
+
+func verifyCKISignature(c *Certificate, data []byte) error {
+	cert, err := cki.ParseCertificate(c.Certificate)
+	if err != nil {
+		return err
+	}
+
+	pk, err := cert.GetPublicKey()
+	if err != nil {
+		return err
+	}
+
+	h := sha512.Sum384(data)
+
+	if ok := pk.Verify(h[:], c.Verify); !ok {
+		return errors.New("stl: invalid cki certificate signature")
+	}
+
+	return nil
+}
+
+func verifyX509Signature(c *Certificate, data []byte) error {
+	cert, err := x509.ParseCertificate(c.Certificate)
+	if err != nil {
+		return err
+	}
+
+	h := sha512.Sum384(data)
+
+	switch pub := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		return rsa.VerifyPKCS1v15(pub, crypto.SHA384, h[:], c.Verify)
+	case *ecdsa.PublicKey:
+		ok := ecdsa.VerifyASN1(pub, h[:], c.Verify)
+		if !ok {
+			return errors.New("stl: invalid ecdsa signature")
+		}
+	case ed25519.PublicKey:
+		ok := ed25519.Verify(pub, h[:], c.Verify)
+		if !ok {
+			return errors.New("stl: invalid ed25519 signature")
+		}
+	default:
+		return fmt.Errorf("stl: unknown public key algorithm %T", pub)
+	}
+
+	return nil
 }

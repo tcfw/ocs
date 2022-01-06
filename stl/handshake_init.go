@@ -278,7 +278,7 @@ func (hs *InitHelloState) readResponseFrame() error {
 func (hs *InitHelloState) processResponse() error {
 	if hs.response.Version != hs.initial.Version {
 		hs.c.sendError(ErrorCode_BadParameters)
-		return errors.New("stl: server responded with mismatching version")
+		return errors.New("stl: responder responded with mismatching version")
 	}
 	hs.c.version = hs.response.Version
 
@@ -301,10 +301,39 @@ func (hs *InitHelloState) processResponse() error {
 			err := cert.Unmarshal(ext.Data)
 			if err != nil {
 				hs.c.sendError(ErrorCode_BadCertificate)
-				return errors.New("stl: server sent bad certificate extension")
+				return errors.New("stl: responder sent bad certificate extension")
 			}
 			hs.peerCertificates = append(hs.peerCertificates, cert)
 		}
+	}
+
+	if err := hs.verifyResponseCertificates(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (hs *InitHelloState) verifyResponseCertificates() error {
+	var signed *Certificate
+	var additional []*Certificate
+
+	for _, cert := range hs.peerCertificates {
+		if cert.Verify != nil && signed == nil {
+			signed = cert
+		} else {
+			additional = append(additional, cert)
+		}
+	}
+
+	if signed == nil {
+		hs.c.sendError(ErrorCode_BadParameters)
+		return errors.New("stl: responder sent no certificate signatures")
+	}
+
+	if err := verifyCertSignature(signed, hs.initial.Random[:]); err != nil {
+		hs.c.sendError(ErrorCode_BadCertificate)
+		return errors.New("stl: responder sent bad certificate signature")
 	}
 
 	return nil
@@ -342,7 +371,7 @@ func (hs *InitHelloState) sendExtraInfo() error {
 			//TODO
 		case ExtensionType_CertificateRequest:
 			if len(hs.c.config.Certificates) == 0 {
-				return errors.New("stl: server requested a certificate but no certificates set")
+				return errors.New("stl: responder requested a certificate but no certificates set")
 			}
 
 			//TODO

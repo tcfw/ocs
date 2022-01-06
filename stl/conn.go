@@ -139,7 +139,7 @@ func (c *Conn) Write(d []byte) (int, error) {
 func (c *Conn) write(data []byte) (int, error) {
 	if c.buffering {
 		c.buffer = append(c.buffer, data...)
-		return 0, nil
+		return len(data), nil
 	}
 
 	n, err := c.conn.Write(data)
@@ -149,11 +149,15 @@ func (c *Conn) write(data []byte) (int, error) {
 }
 
 func (c *Conn) flush() (int, error) {
-	n, err := c.conn.Write(c.buffer)
+	c.buffering = false
+
+	if len(c.buffer) == 0 {
+		return 0, nil
+	}
+
+	n, err := c.write(c.buffer)
 	c.buffer = []byte{}
 
-	atomic.AddInt64(&c.bytesSent, int64(n))
-	atomic.AddInt64(&c.packetsSent, 1)
 	return n, err
 }
 
