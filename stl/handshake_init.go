@@ -108,15 +108,16 @@ func (ch *InitHello) Marshal() ([]byte, error) {
 }
 
 type InitHelloState struct {
-	c                *Conn
-	ctx              context.Context
-	initial          *InitHello
-	response         *ResponseHello
-	params           *handshakeParams
-	requiredInfo     []Extension
-	peerCertificates []*Certificate
-	handshakeCipher  cipher.AEAD
-	masterSecret     []byte
+	c                        *Conn
+	ctx                      context.Context
+	initial                  *InitHello
+	response                 *ResponseHello
+	params                   *handshakeParams
+	requiredInfo             []Extension
+	peerCertificates         []*Certificate
+	deferedCertificateVerify bool
+	handshakeCipher          cipher.AEAD
+	masterSecret             []byte
 }
 
 func (c *Conn) makeInitHandshake() (*InitHello, *handshakeParams, error) {
@@ -152,6 +153,8 @@ func (c *Conn) makeInitHandshake() (*InitHello, *handshakeParams, error) {
 	switch c.config.HostnameMode {
 	case HostnameType_DNS, HostnameType_IP:
 		ih.Hostname = []byte(c.config.Hostname)
+	case HostnameType_OnRequest:
+		//keep it blank, responder will ask during handshake
 	case HostnameType_PSK:
 		//todo
 	case HostnameType_unknown:
@@ -205,6 +208,12 @@ func (hs *InitHelloState) handshake() error {
 
 	if err := hs.sendExtraInfo(); err != nil {
 		return err
+	}
+
+	if len(hs.requiredInfo) > 0 {
+		if err := hs.processMoreInfo(); err != nil {
+			return err
+		}
 	}
 
 	if err := hs.sendFinish(); err != nil {
@@ -315,6 +324,11 @@ func (hs *InitHelloState) processResponse() error {
 }
 
 func (hs *InitHelloState) verifyResponseCertificates() error {
+	if !hs.deferedCertificateVerify && hasInfoRequest(ExtensionType_NameRequest, hs.requiredInfo) {
+		hs.deferedCertificateVerify = true
+		return nil
+	}
+
 	var signed *Certificate
 	var additional []*Certificate
 
@@ -331,11 +345,73 @@ func (hs *InitHelloState) verifyResponseCertificates() error {
 		return errors.New("stl: responder sent no certificate signatures")
 	}
 
-	if err := verifyCertSignature(signed, hs.initial.Random[:]); err != nil {
+	vd := append(hs.initial.Random[:], hs.response.Random[:]...)
+	if err := verifyCertSignature(signed, vd); err != nil {
 		hs.c.sendError(ErrorCode_BadCertificate)
 		return errors.New("stl: responder sent bad certificate signature")
 	}
 
+	if err := verifyHostname(signed, hs.c.config.Hostname); err != nil {
+		hs.c.sendError(ErrorCode_BadCertificate)
+		return errors.New("stl: certificate hostname mismatch")
+	}
+
+	if !hs.c.config.SkipCertificateVerification {
+		//ensure all certs are same as signed cert
+		for _, a := range additional {
+			if a.CertificateType != signed.CertificateType {
+				hs.c.sendError(ErrorCode_BadCertificate)
+				return errors.New("stl: inconsistent certificate types")
+			}
+		}
+
+		var err error
+		if signed.CertificateType == CertificateType_X509 {
+			err = verifyX509Chain(hs.c.config, signed, additional)
+		} else {
+			err = verifyCKIChain(hs.c.config, signed, additional)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (hs *InitHelloState) processMoreInfo() error {
+	msg, err := hs.c.readHandshake()
+	if err != nil {
+		return err
+	}
+
+	info, ok := msg.(*InfoFrame)
+	if !ok {
+		return hs.c.in.setError(hs.c.sendError(ErrorCode_UnexpectedFrame))
+	}
+
+	for _, ext := range info.Extensions {
+		if isInfoRequest(ext.ExtType) {
+			return hs.c.in.setError(hs.c.sendError(ErrorCode_BadParameters))
+		}
+
+		if ext.ExtType == ExtensionType_Certificate {
+			cert := &Certificate{}
+			err := cert.Unmarshal(ext.Data)
+			if err != nil {
+				hs.c.sendError(ErrorCode_BadCertificate)
+				return errors.New("stl: responder sent bad certificate extension")
+			}
+			hs.peerCertificates = append(hs.peerCertificates, cert)
+		}
+	}
+
+	if hs.deferedCertificateVerify {
+		if err := hs.verifyResponseCertificates(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -369,6 +445,11 @@ func (hs *InitHelloState) sendExtraInfo() error {
 		switch req.ExtType {
 		case ExtensionType_NameRequest:
 			//TODO
+			ext := Extension{
+				ExtType: ExtensionType_Name,
+				Data:    []byte(hs.c.config.Hostname),
+			}
+			info = append(info, ext)
 		case ExtensionType_CertificateRequest:
 			if len(hs.c.config.Certificates) == 0 {
 				return errors.New("stl: responder requested a certificate but no certificates set")
@@ -406,4 +487,14 @@ func (hs *InitHelloState) sendFinish() error {
 	atomic.StoreUint32(&hs.c.state, connState_wait_finish)
 
 	return nil
+}
+
+func hasInfoRequest(t ExtensionType, e []Extension) bool {
+	for _, i := range e {
+		if i.ExtType == t {
+			return true
+		}
+	}
+
+	return false
 }

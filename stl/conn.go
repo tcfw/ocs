@@ -472,7 +472,7 @@ type State struct {
 	Version           uint8
 	HandshakeComplete bool
 	Suite             Suite
-	ServerName        string
+	PeerName          string
 	PeerCertificates  []*Certificate
 }
 
@@ -481,6 +481,7 @@ func (c *Conn) State() (state State) {
 	state.Suite = c.suite
 	state.HandshakeComplete = c.isHandshakeComplete()
 	state.PeerCertificates = c.peerCertificates
+	state.PeerName = c.config.Hostname
 
 	return
 }

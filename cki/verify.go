@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -82,7 +83,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 		}
 
 		if !parent.IsCA {
-			return errors.New("parent certificate is not a CA")
+			return errors.New("cki: parent certificate is not a CA")
 		}
 
 		err = verifyPKI(parent, p, multi)
@@ -113,5 +114,97 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 
 //verifyWOT TODO(tcfw)
 func verifyWOT(c *Certificate, p CertPool) error {
-	return fmt.Errorf("not implemented")
+	return fmt.Errorf("cki: not implemented")
+}
+
+func MatchesSubject(c *Certificate, s string) error {
+	subjects := []string{c.Subject}
+
+	for _, ext := range c.Extensions {
+		if ext.Type == AdditionalSubject {
+			subjects = append(subjects, string(ext.Data))
+		}
+	}
+
+	matchHost := validHostname(s, false)
+
+	for _, subject := range subjects {
+		if matchHost && validHostname(subject, true) && matchesPattern(subject, s) {
+			return nil
+		} else {
+			if s == subject {
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("cki: no match found for hostname %s", s)
+}
+
+// validHostname reports whether host is a valid hostname that can be matched or
+// matched against according to RFC 6125 2.2, with some leniency to accommodate
+// legacy values.
+func validHostname(host string, isPattern bool) bool {
+	if !isPattern {
+		host = strings.TrimSuffix(host, ".")
+	}
+	if len(host) == 0 {
+		return false
+	}
+
+	for i, part := range strings.Split(host, ".") {
+		if part == "" {
+			// Empty label.
+			return false
+		}
+		if isPattern && i == 0 && part == "*" {
+			// Only allow full left-most wildcards, as those are the only ones
+			// we match, and matching literal '*' characters is probably never
+			// the expected behaviour.
+			continue
+		}
+		for j, c := range part {
+			if 'a' <= c && c <= 'z' {
+				continue
+			}
+			if '0' <= c && c <= '9' {
+				continue
+			}
+			if 'A' <= c && c <= 'Z' {
+				continue
+			}
+			if c == '-' && j != 0 {
+				continue
+			}
+			if c == '_' {
+				// Not a valid character in hostnames, but commonly
+				// found in deployments outside the WebPKI.
+				continue
+			}
+			return false
+		}
+	}
+
+	return true
+}
+
+func matchesPattern(pattern, subject string) bool {
+	patternP := strings.Split(pattern, ".")
+	subjectP := strings.Split(subject, ".")
+
+	if len(patternP) != len(subjectP) {
+		return false
+	}
+
+	for i, l := range patternP {
+		if i == 0 && l == "*" {
+			continue
+		}
+
+		if l != subjectP[i] {
+			return false
+		}
+	}
+
+	return true
 }

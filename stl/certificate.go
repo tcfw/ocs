@@ -260,6 +260,35 @@ func makeCertVerifySig(p crypto.PrivateKey, data []byte, rand io.Reader) ([]byte
 	}
 }
 
+func verifyHostname(c *Certificate, h string) error {
+	switch c.CertificateType {
+	case CertificateType_X509:
+		return verifyX509Hostname(c, h)
+	case CertificateType_CKI:
+		return verifyCKIHostname(c, h)
+	default:
+		return errors.New("unknown certificate type")
+	}
+}
+
+func verifyX509Hostname(c *Certificate, h string) error {
+	cert, err := x509.ParseCertificate(c.Certificate)
+	if err != nil {
+		return err
+	}
+
+	return cert.VerifyHostname(h)
+}
+
+func verifyCKIHostname(c *Certificate, h string) error {
+	cert, err := cki.ParseCertificate(c.Certificate)
+	if err != nil {
+		return err
+	}
+
+	return cki.MatchesSubject(cert, h)
+}
+
 func verifyCertSignature(c *Certificate, data []byte) error {
 	switch c.CertificateType {
 	case CertificateType_X509:
@@ -317,4 +346,82 @@ func verifyX509Signature(c *Certificate, data []byte) error {
 	}
 
 	return nil
+}
+
+func verifyCKIChain(c *Config, s *Certificate, a []*Certificate) error {
+	escp := &extendedSystemCertPool{
+		systemPool: cki.SystemRootsPool(),
+		interms:    make(map[string]*cki.Certificate, len(a)),
+	}
+
+	cert, err := cki.ParseCertificate(s.Certificate)
+	if err != nil {
+		return err
+	}
+
+	for _, ic := range a {
+		c, err := cki.ParseCertificate(ic.Certificate)
+		if err != nil {
+			return err
+		}
+		escp.interms[string(c.ID)] = c
+	}
+
+	return cert.Verify(escp)
+}
+
+type extendedSystemCertPool struct {
+	systemPool cki.CertPool
+	interms    map[string]*cki.Certificate
+}
+
+func (escp *extendedSystemCertPool) FindCertificate(id, ref []byte) (*cki.Certificate, error) {
+	interm, ok := escp.interms[string(id)]
+	if ok {
+		return interm, nil
+	}
+
+	return escp.systemPool.FindCertificate(id, ref)
+}
+
+func (escp *extendedSystemCertPool) TrustLevel(id []byte) (cki.TrustLevel, error) {
+	cert, err := escp.systemPool.FindCertificate(id, nil)
+	if err == nil && cert != nil {
+		return escp.TrustLevel(id)
+	}
+
+	return cki.UnknownTrust, nil
+}
+
+func (escp *extendedSystemCertPool) IsRevoked(id []byte) error {
+	return nil
+}
+
+func verifyX509Chain(c *Config, s *Certificate, a []*Certificate) error {
+	cert, err := x509.ParseCertificate(s.Certificate)
+	if err != nil {
+		return err
+	}
+
+	opts := x509.VerifyOptions{}
+
+	for _, ap := range a {
+		ac, err := x509.ParseCertificate(ap.Certificate)
+		if err != nil {
+			return err
+		}
+		opts.Intermediates.AddCert(ac)
+	}
+
+	for _, r := range c.RootCertificates {
+		rc, err := x509.ParseCertificate(r.Certificate)
+		if err != nil {
+			return err
+		}
+		opts.Roots.AddCert(rc)
+	}
+
+	_, err = cert.Verify(opts)
+
+	return err
 }

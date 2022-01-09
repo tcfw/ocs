@@ -82,7 +82,6 @@ func TestVerifyPKI(t *testing.T) {
 	//Root CA trusted
 	cp.AddCert(root, Trusted)
 	cp.AddCert(intermediate, UnknownTrust)
-	cp.AddCert(edge, UnknownTrust)
 
 	err = edge.Verify(cp)
 	assert.Nil(t, err)
@@ -92,7 +91,6 @@ func TestVerifyPKI(t *testing.T) {
 	//No one trusted
 	cp.AddCert(root, UnknownTrust)
 	cp.AddCert(intermediate, UnknownTrust)
-	cp.AddCert(edge, UnknownTrust)
 
 	err = edge.Verify(cp)
 	assert.ErrorIs(t, err, ErrUntrustedCertificate)
@@ -102,7 +100,6 @@ func TestVerifyPKI(t *testing.T) {
 	//Intermediate Trusted
 	cp.AddCert(root, UnknownTrust)
 	cp.AddCert(intermediate, Trusted)
-	cp.AddCert(edge, UnknownTrust)
 
 	err = edge.Verify(cp)
 	assert.Nil(t, err)
@@ -122,4 +119,18 @@ func TestVerifyPKI(t *testing.T) {
 
 	err = edge.Verify(cp)
 	assert.ErrorIs(t, err, ErrUntrustedCertificate)
+}
+
+func TestPatternMatch(t *testing.T) {
+	assert.True(t, matchesPattern("*.test", "a.test"))
+	assert.True(t, matchesPattern("b.test", "b.test"))
+	assert.True(t, matchesPattern("*.test", "*.test"))
+	assert.True(t, matchesPattern("*.b.c", "a.b.c"))
+	assert.True(t, matchesPattern("a.b.c", "a.b.c"))
+	assert.False(t, matchesPattern("d.b.c", "a.b.c"))
+	assert.False(t, matchesPattern("*.test.com", "a.test"))
+	assert.False(t, matchesPattern("*.test", "a.b.test"))
+	assert.False(t, matchesPattern("b.test", "a.test"))
+	assert.False(t, matchesPattern("a.*.test", "a.b.test"))
+	assert.False(t, matchesPattern("a.test", "*.test"))
 }

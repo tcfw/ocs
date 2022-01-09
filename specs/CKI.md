@@ -86,7 +86,7 @@ Extension fields MUST use the shorthand map key as follos when encoded using Mes
 
 ### CertType
 
-The certificate type relates to the verification mode of which the certificate is intented to be used for. The type is indexed into a uint8 space as follows:
+The certificate type relates to the verification mode of which the certificate is intended to be used for. The type is indexed into a uint8 space as follows:
 
 - 0: unknown/not set
 - 1: PKI mode

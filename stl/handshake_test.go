@@ -1,7 +1,6 @@
 package stl
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"runtime"
@@ -12,21 +11,21 @@ import (
 	"github.com/tcfw/ocs/cki"
 )
 
-func TestMain(t *testing.M) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		l, err = net.Listen("tcp6", "[::1]:0")
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open local listener: %v", err)
-		os.Exit(1)
-	}
-	localListener.ch = make(chan net.Conn)
-	localListener.addr = l.Addr()
-	defer l.Close()
-	go localServer(l)
+// func TestMain(t *testing.M) {
+// 	l, err := net.Listen("tcp", "127.0.0.1:0")
+// 	if err != nil {
+// 		l, err = net.Listen("tcp6", "[::1]:0")
+// 	}
+// 	if err != nil {
+// 		fmt.Fprintf(os.Stderr, "Failed to open local listener: %v", err)
+// 		os.Exit(1)
+// 	}
+// 	localListener.ch = make(chan net.Conn)
+// 	localListener.addr = l.Addr()
+// 	defer l.Close()
+// 	go localServer(l)
 
-}
+// }
 
 // localListener is set up by TestMain and used by localPipe to create Conn
 // pairs like net.Pipe, but connected by an actual buffered TCP connection.
@@ -61,7 +60,7 @@ func localPipe(t testing.TB) (net.Conn, net.Conn) {
 	addr := localListener.addr
 
 	var err error
-Dialing:
+Dialling:
 	// We expect a rare mismatch, but probably not 5 in a row.
 	for i := 0; i < 5; i++ {
 		tooSlow := time.NewTimer(1 * time.Second)
@@ -86,7 +85,7 @@ Dialing:
 			case <-tooSlow.C:
 				t.Logf("localPipe: timeout waiting for %v", c1.LocalAddr())
 				c1.Close()
-				continue Dialing
+				continue Dialling
 
 			case c2 := <-localListener.ch:
 				if c2.RemoteAddr().String() == c1.LocalAddr().String() {

@@ -2,6 +2,7 @@ package stl
 
 import (
 	"crypto/rand"
+	"crypto/x509"
 	"errors"
 	"io"
 	"time"
@@ -27,6 +28,9 @@ type Config struct {
 
 	Rand io.Reader
 	Time func() time.Time
+
+	SkipCertificateVerification bool
+	RootCertificates            []*Certificate
 }
 
 func defaultConfig() *Config {
@@ -68,7 +72,29 @@ func (c *Config) getCertificate(ih *ResponseHelloState) (*CertificatePair, error
 		return &c.Certificates[0], nil
 	}
 
-	//todo cert selection
+	for _, cert := range c.Certificates {
+		switch cert.CertType {
+		case CertificateType_X509:
+			cx, err := x509.ParseCertificate(cert.Certificate[0])
+			if err != nil {
+				return nil, err
+			}
+			err = cx.VerifyHostname(string(ih.hostname))
+			if err == nil {
+				return &cert, nil
+			}
+		case CertificateType_CKI:
+			cx, err := cki.ParseCertificate(cert.Certificate[0])
+			if err != nil {
+				return nil, err
+			}
+
+			err = cki.MatchesSubject(cx, string(ih.hostname))
+			if err == nil {
+				return &cert, nil
+			}
+		}
+	}
 
 	return &c.Certificates[0], nil
 }

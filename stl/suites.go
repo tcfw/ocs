@@ -41,7 +41,7 @@ var (
 
 	trafficLabelInit     = []byte("traffic initer")
 	trafficLabelResponse = []byte("traffic response")
-	handshakeLabel       = []byte("hs reponse hello")
+	handshakeLabel       = []byte("hs response hello")
 )
 
 type Suite struct {
@@ -165,9 +165,9 @@ func x25519ECDH(c *Config, peerKey []byte, params *handshakeParams) ([]byte, err
 	return sec[:], nil
 }
 
-func mutualSuite(c *Config, inital []Suite) (Suite, error) {
+func mutualSuite(c *Config, initial []Suite) (Suite, error) {
 	suite := Suite{
-		Handshake:   inital[0].Handshake,
+		Handshake:   initial[0].Handshake,
 		Application: AppSuiteNotSet,
 	}
 
@@ -178,7 +178,7 @@ func mutualSuite(c *Config, inital []Suite) (Suite, error) {
 	}
 
 	for _, want := range preferenceList {
-		for _, have := range inital {
+		for _, have := range initial {
 			if have.Application == want {
 				suite.Application = want
 				break

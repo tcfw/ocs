@@ -1,6 +1,17 @@
 package cki
 
-import "errors"
+import (
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+)
+
+const (
+	certDirEnv = "SSL_CERT_DIR"
+)
 
 //TrustLevel represents a user specified or system level of trust on a certificste
 type TrustLevel uint8
@@ -38,6 +49,24 @@ type CertPool interface {
 	CertFinder
 	CertTrustStore
 	CertRevokeChecker
+}
+
+var (
+	once           sync.Once
+	systemRoots    CertPool
+	systemRootsErr error
+)
+
+func SystemRootsPool() CertPool {
+	once.Do(initSystemRoots)
+	return systemRoots
+}
+
+func initSystemRoots() {
+	systemRoots, systemRootsErr = newSystemCertPool()
+	if systemRootsErr != nil {
+		systemRoots = nil
+	}
 }
 
 //InMemCertPool an in-memory certificate pool useful for tests
@@ -107,4 +136,30 @@ func (incp *InMemCertPool) IsRevoked(id []byte) error {
 	}
 
 	return nil
+}
+
+// readUniqueDirectoryEntries is like os.ReadDir but omits
+// symlinks that point within the directory.
+func readUniqueDirectoryEntries(dir string) ([]fs.DirEntry, error) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	uniq := files[:0]
+	for _, f := range files {
+		if !isSameDirSymlink(f, dir) {
+			uniq = append(uniq, f)
+		}
+	}
+	return uniq, nil
+}
+
+// isSameDirSymlink reports whether fi in dir is a symlink with a
+// target not containing a slash.
+func isSameDirSymlink(f fs.DirEntry, dir string) bool {
+	if f.Type()&fs.ModeSymlink == 0 {
+		return false
+	}
+	target, err := os.Readlink(filepath.Join(dir, f.Name()))
+	return err == nil && !strings.Contains(target, "/")
 }

@@ -200,7 +200,7 @@ type ResponseHelloState struct {
 	peerCertificates []*Certificate
 	hostname         []byte
 	requiredInfo     []Extension
-	moreInfo         InfoFrame
+	moreInfo         *InfoFrame
 	certificate      *CertificatePair
 	validatedAuth    bool
 	handshakeCipher  cipher.AEAD
@@ -265,7 +265,7 @@ func (hs *ResponseHelloState) handshake() error {
 			return err
 		}
 
-		info, ok := msg.(InfoFrame)
+		info, ok := msg.(*InfoFrame)
 		if !ok {
 			hs.c.sendError(ErrorCode_UnexpectedFrame)
 			return errors.New("was expecting an info frame")
@@ -388,7 +388,7 @@ func (hs *ResponseHelloState) pickCertificate() error {
 		hs.hostname = hs.initial.Hostname
 	}
 
-	if hs.hostname == nil || hs.initial.HostnameType == HostnameType_OnRequest {
+	if (hs.hostname == nil || hs.initial.HostnameType == HostnameType_OnRequest) && len(hs.c.config.Certificates) != 1 {
 		hs.requiredInfo = append(hs.requiredInfo, Extension{ExtType: ExtensionType_NameRequest})
 		return nil
 	}
@@ -455,7 +455,8 @@ func (hs *ResponseHelloState) sendResponse() error {
 	hs.response.Extensions = append(hs.response.Extensions, hs.requiredInfo...)
 
 	if hs.certificate != nil {
-		certExt, err := makeCertificateExtensions(*hs.certificate, hs.initial.Random[:], hs.c.config.rand())
+		vd := append(hs.initial.Random[:], hs.response.Random[:]...)
+		certExt, err := makeCertificateExtensions(*hs.certificate, vd, hs.c.config.rand())
 		if err != nil {
 			return err
 		}

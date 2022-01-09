@@ -3,6 +3,9 @@ package stl
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
+	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -153,9 +156,24 @@ func TestMarshalEncryptedResponseHello(t *testing.T) {
 }
 
 func TestResponseBasicParams(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		l, err = net.Listen("tcp6", "[::1]:0")
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open local listener: %v", err)
+		os.Exit(1)
+	}
+	localListener.ch = make(chan net.Conn)
+	localListener.addr = l.Addr()
+	defer l.Close()
+	go localServer(l)
+
 	config := defaultConfig()
 	config.Time = func() time.Time { return time.Unix(0, 0) }
 	config.Rand = zeroSource{}
+	config.Hostname = "example.com"
+	config.SkipCertificateVerification = true
 
 	certPem, privPEM := generateTestCert(t, "example.com")
 
@@ -163,6 +181,7 @@ func TestResponseBasicParams(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	config.Certificates = []CertificatePair{cp}
 
 	r, w := localPipe(t) //net.Pipe()
@@ -182,22 +201,14 @@ func TestResponseBasicParams(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ih := &InitHelloState{
-			c:       sc,
-			ctx:     context.Background(),
-			initial: hello,
-			params:  initParams,
-		}
+	errs := make(chan error)
 
-		err := ih.handshake()
-		if err != nil {
-			t.Logf("err on initer handshake: %s", err)
-		}
-	}()
+	ih := &InitHelloState{
+		c:       sc,
+		ctx:     context.Background(),
+		initial: hello,
+		params:  initParams,
+	}
 
 	rh := &ResponseHelloState{
 		c:       c,
@@ -205,12 +216,36 @@ func TestResponseBasicParams(t *testing.T) {
 		initial: hello,
 	}
 
-	err = rh.handshake()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	wg.Wait()
+		err := ih.handshake()
+		if err != nil {
+			errs <- fmt.Errorf("err on inter: %s", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = rh.handshake()
+		if err != nil {
+			errs <- fmt.Errorf("err on responder: %s", err)
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(errs)
+	}()
+
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	cState := c.State()
 	scState := sc.State()
