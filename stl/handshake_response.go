@@ -215,7 +215,7 @@ func (c *Conn) respondHandshake(ctx context.Context) error {
 		return err
 	}
 
-	ih, ok := msg.(InitHello)
+	ih, ok := msg.(*InitHello)
 	if !ok {
 		return c.in.setError(c.sendError(ErrorCode_UnexpectedFrame))
 	}
@@ -223,7 +223,7 @@ func (c *Conn) respondHandshake(ctx context.Context) error {
 	state := &ResponseHelloState{
 		c:       c,
 		ctx:     ctx,
-		initial: &ih,
+		initial: ih,
 	}
 
 	return state.handshake()

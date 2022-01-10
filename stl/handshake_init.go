@@ -131,21 +131,21 @@ func (c *Conn) makeInitHandshake() (*InitHello, *handshakeParams, error) {
 		return nil, nil, err
 	}
 
-	if hasAESGCMHardwareSupport {
-		ih.Suites = []Suite{
-			{c.config.PreferredCurve, AES256gcm},
-			{c.config.PreferredCurve, Chacha20_poly1305},
-		}
-	} else {
-		ih.Suites = []Suite{
-			{c.config.PreferredCurve, Chacha20_poly1305},
-			{c.config.PreferredCurve, AES256gcm},
-		}
-	}
-
 	params, err := curveParams(c.config, c.config.PreferredCurve)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if hasAESGCMHardwareSupport {
+		ih.Suites = []Suite{
+			{params.curve, AES256gcm},
+			{params.curve, Chacha20_poly1305},
+		}
+	} else {
+		ih.Suites = []Suite{
+			{params.curve, Chacha20_poly1305},
+			{params.curve, AES256gcm},
+		}
 	}
 
 	ih.Key = []byte(params.pub)
@@ -376,6 +376,8 @@ func (hs *InitHelloState) verifyResponseCertificates() error {
 			return err
 		}
 	}
+
+	hs.c.peerCertificates = hs.peerCertificates
 
 	return nil
 }

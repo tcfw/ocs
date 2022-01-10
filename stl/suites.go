@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/elliptic"
 	"errors"
+	"fmt"
 	"io"
 	"runtime"
 
@@ -68,8 +69,9 @@ const (
 )
 
 type handshakeParams struct {
-	priv crypto.PrivateKey
-	pub  []byte
+	curve HandshakeSuite
+	priv  crypto.PrivateKey
+	pub   []byte
 }
 
 func curveParams(c *Config, s HandshakeSuite) (*handshakeParams, error) {
@@ -93,8 +95,9 @@ func curve25519params(c *Config) (*handshakeParams, error) {
 	curve25519.ScalarBaseMult(&pub, &priv)
 
 	return &handshakeParams{
-		priv: priv,
-		pub:  pub[:],
+		curve: ECDHE_x25519,
+		priv:  priv,
+		pub:   pub[:],
 	}, nil
 }
 
@@ -105,9 +108,10 @@ func curveGenericParams(c *Config, curve HandshakeSuite) (*handshakeParams, erro
 	case ECDHE_p256:
 		g = elliptic.P256()
 	case ECDHE_p386:
-		g = elliptic.P384()
+		fallthrough
 	default:
-		return nil, errors.New("unknown curve")
+		g = elliptic.P384()
+		// return nil, fmt.Errorf("unset curve %v", curve)
 	}
 
 	private, x, y, err := elliptic.GenerateKey(g, c.rand())
@@ -119,8 +123,9 @@ func curveGenericParams(c *Config, curve HandshakeSuite) (*handshakeParams, erro
 	public := elliptic.MarshalCompressed(g, x, y)
 
 	return &handshakeParams{
-		pub:  public,
-		priv: private,
+		curve: curve,
+		pub:   public,
+		priv:  private,
 	}, nil
 }
 
@@ -132,7 +137,7 @@ func ecdh(c *Config, curve HandshakeSuite, peerKey []byte, params *handshakePara
 		return x25519ECDH(c, peerKey, params)
 	}
 
-	return nil, errors.New("unknown curve")
+	return nil, fmt.Errorf("unknown curve %v", curve)
 }
 
 func genericECDH(c *Config, curve HandshakeSuite, peerKey []byte, params *handshakeParams) ([]byte, error) {
@@ -144,7 +149,7 @@ func genericECDH(c *Config, curve HandshakeSuite, peerKey []byte, params *handsh
 	case ECDHE_p386:
 		g = elliptic.P384()
 	default:
-		return nil, errors.New("unknown curve")
+		return nil, fmt.Errorf("unknown curve %v", curve)
 	}
 
 	x, y := elliptic.UnmarshalCompressed(g, peerKey)

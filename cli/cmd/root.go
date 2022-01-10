@@ -30,4 +30,5 @@ func Execute() {
 
 func setup() {
 	rootCmd.AddCommand(certCmd)
+	rootCmd.AddCommand(stlCmd)
 }

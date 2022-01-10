@@ -109,6 +109,10 @@ func dial(ctx context.Context, netDialer *net.Dialer, network, addr string, conf
 
 	config.Hostname = hostname
 
+	if config.HostnameMode == HostnameType_unknown {
+		config.HostnameMode = HostnameType_DNS
+	}
+
 	conn := Initer(rawConn, config)
 	if err := conn.HandshakeContext(ctx); err != nil {
 		rawConn.Close()
