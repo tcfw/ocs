@@ -342,6 +342,19 @@ func (hs *ResponseHelloState) validateHello() error {
 		}
 	}
 
+	if hs.c.config.NextProto != "" {
+		var nextproto string
+		for _, ext := range i.Extensions {
+			if ext.ExtType == ExtensionType_NextProto {
+				nextproto = string(ext.Data)
+			}
+		}
+		if nextproto != hs.c.config.NextProto {
+			return errors.New("stl: mismatch next protocol")
+		}
+		hs.c.handshakeNextProto = nextproto
+	}
+
 	if hs.c.config.AllowedTimeDiff != 0 {
 		iTime := time.Unix(int64(i.Epoch), 0)
 		if hs.c.config.time().Sub(iTime) >= hs.c.config.AllowedTimeDiff {
@@ -462,6 +475,13 @@ func (hs *ResponseHelloState) sendResponse() error {
 		}
 
 		hs.response.Extensions = append(hs.response.Extensions, certExt...)
+	}
+
+	if hs.c.config.NextProto != "" {
+		hs.response.Extensions = append(hs.response.Extensions, Extension{
+			ExtType: ExtensionType_NextProto,
+			Data:    []byte(hs.c.config.NextProto),
+		})
 	}
 
 	hc, err := makeCipher(hs.response.Suite.Application, hs.masterSecret, handshakeLabel)

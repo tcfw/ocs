@@ -174,6 +174,7 @@ func TestResponseBasicParams(t *testing.T) {
 	config.Rand = zeroSource{}
 	config.Hostname = "example.com"
 	config.SkipCertificateVerification = true
+	config.NextProto = "h2"
 
 	certPem, privPEM := generateTestCert(t, "example.com")
 
@@ -255,6 +256,8 @@ func TestResponseBasicParams(t *testing.T) {
 
 	assert.Equal(t, cState.Version, scState.Version)
 	assert.Equal(t, cState.Suite, scState.Suite)
+	assert.Equal(t, cState.NextProto, scState.NextProto)
+	assert.Equal(t, config.NextProto, cState.NextProto)
 }
 
 // func testHandshake(t *testing.T, clientConfig, serverConfig *Config) (clientState, serverState *State, err error) {

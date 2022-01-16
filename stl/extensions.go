@@ -42,6 +42,7 @@ const (
 	ExtensionType_NameRequest
 	ExtensionType_EarlyData
 	ExtensionType_HostnameId
+	ExtensionType_NextProto
 )
 
 func matchesRequest(want, have ExtensionType) bool {

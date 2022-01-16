@@ -18,12 +18,13 @@ type Conn struct {
 	state  uint32
 	active uint32
 
-	handshakeFn       func(context.Context) error
-	handshakeMutex    sync.Mutex
-	handshakeError    error
-	handshakeAttempts int
-	version           uint8
-	peerCertificates  []*Certificate
+	handshakeFn        func(context.Context) error
+	handshakeMutex     sync.Mutex
+	handshakeError     error
+	handshakeAttempts  int
+	version            uint8
+	handshakeNextProto string
+	peerCertificates   []*Certificate
 
 	config *Config
 	suite  Suite
@@ -474,6 +475,7 @@ type State struct {
 	Suite             Suite
 	PeerName          string
 	PeerCertificates  []*Certificate
+	NextProto         string
 }
 
 func (c *Conn) State() (state State) {
@@ -482,6 +484,7 @@ func (c *Conn) State() (state State) {
 	state.HandshakeComplete = c.isHandshakeComplete()
 	state.PeerCertificates = c.peerCertificates
 	state.PeerName = c.config.Hostname
+	state.NextProto = c.handshakeNextProto
 
 	return
 }

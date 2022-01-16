@@ -118,6 +118,7 @@ type InitHelloState struct {
 	deferedCertificateVerify bool
 	handshakeCipher          cipher.AEAD
 	masterSecret             []byte
+	nextProto                string
 }
 
 func (c *Conn) makeInitHandshake() (*InitHello, *handshakeParams, error) {
@@ -161,6 +162,13 @@ func (c *Conn) makeInitHandshake() (*InitHello, *handshakeParams, error) {
 		fallthrough
 	default:
 		return nil, nil, fmt.Errorf("unknown hostname mode")
+	}
+
+	if c.config.NextProto != "" {
+		ih.Extensions = append(ih.Extensions, Extension{
+			ExtType: ExtensionType_NextProto,
+			Data:    []byte(c.config.NextProto),
+		})
 	}
 
 	return ih, params, nil
@@ -314,11 +322,20 @@ func (hs *InitHelloState) processResponse() error {
 			}
 			hs.peerCertificates = append(hs.peerCertificates, cert)
 		}
+
+		if ext.ExtType == ExtensionType_NextProto {
+			hs.nextProto = string(ext.Data)
+		}
 	}
 
 	if err := hs.verifyResponseCertificates(); err != nil {
 		return err
 	}
+
+	if hs.nextProto != "" && hs.c.config.NextProto != hs.nextProto {
+		return errors.New("stl: mismatch next protocol")
+	}
+	hs.c.handshakeNextProto = hs.nextProto
 
 	return nil
 }

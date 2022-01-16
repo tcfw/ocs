@@ -18,6 +18,7 @@ type Config struct {
 	Hostname       string
 	HostnameMode   HostnameType
 	PreferredCurve HandshakeSuite
+	NextProto      string
 
 	Certificates   []CertificatePair
 	ClientAuth     bool

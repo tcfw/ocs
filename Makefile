@@ -1,6 +1,6 @@
 GOENV ?= #CGO_ENABLED=0
 GOBIN ?= $(GOENV) go
-GOBUILDFLAGS ?= -ldflags="-s -w"
+GOBUILDFLAGS ?= -ldflags="-s -w" -trimpath
 
 BINDIR ?= bin
 
