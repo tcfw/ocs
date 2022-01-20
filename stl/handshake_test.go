@@ -1,6 +1,8 @@
 package stl
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"os"
 	"runtime"
@@ -143,4 +145,99 @@ func generateTestCert(t *testing.T, subject string) ([]byte, []byte) {
 	privPEM := cki.MarshalPEMPrivateKey(privBytes)
 
 	return certPEM, privPEM
+}
+
+func testDefaultConfig() *Config {
+	config := defaultConfig()
+	config.Time = func() time.Time { return time.Unix(0, 0) }
+	config.Rand = zeroSource{}
+	config.Hostname = "example.com"
+	config.SkipCertificateVerification = true
+
+	return config
+}
+
+func testHandshake(t *testing.T, clientConfig, serverConfig *Config) (clientState, serverState *State, err error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		l, err = net.Listen("tcp6", "[::1]:0")
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to open local listener: %v", err)
+	}
+
+	localListener.ch = make(chan net.Conn)
+	localListener.addr = l.Addr()
+	defer l.Close()
+	go localServer(l)
+
+	r, w := localPipe(t) //net.Pipe()
+
+	c := &Conn{
+		conn:   w,
+		config: clientConfig,
+	}
+
+	sc := &Conn{
+		conn:   r,
+		config: serverConfig,
+	}
+
+	hello, initParams, err := c.makeInitHandshake()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	errs := make(chan error)
+
+	ih := &InitHelloState{
+		c:       sc,
+		ctx:     context.Background(),
+		initial: hello,
+		params:  initParams,
+	}
+
+	rh := &ResponseHelloState{
+		c:       c,
+		ctx:     context.Background(),
+		initial: hello,
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err := ih.handshake()
+		if err != nil {
+			errs <- fmt.Errorf("err on inter: %s", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = rh.handshake()
+		if err != nil {
+			errs <- fmt.Errorf("err on responder: %s", err)
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(errs)
+	}()
+
+	for err := range errs {
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	cState := c.State()
+	sState := sc.State()
+	clientState = &cState
+	serverState = &sState
+
+	return
 }

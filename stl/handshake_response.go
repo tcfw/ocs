@@ -342,17 +342,17 @@ func (hs *ResponseHelloState) validateHello() error {
 		}
 	}
 
-	if hs.c.config.NextProto != "" {
-		var nextproto string
-		for _, ext := range i.Extensions {
-			if ext.ExtType == ExtensionType_NextProto {
-				nextproto = string(ext.Data)
-			}
+	var nextproto string
+	for _, ext := range i.Extensions {
+		if ext.ExtType == ExtensionType_NextProto {
+			nextproto = string(ext.Data)
 		}
-		if nextproto != hs.c.config.NextProto {
-			return errors.New("stl: mismatch next protocol")
-		}
+	}
+	if nextproto != "" {
 		hs.c.handshakeNextProto = nextproto
+	}
+	if hs.c.config.NextProto != "" && nextproto != hs.c.config.NextProto {
+		return errors.New("stl: mismatch next protocol")
 	}
 
 	if hs.c.config.AllowedTimeDiff != 0 {

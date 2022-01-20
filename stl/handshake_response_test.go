@@ -1,14 +1,8 @@
 package stl
 
 import (
-	"context"
 	"crypto/rand"
-	"fmt"
-	"net"
-	"os"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -156,26 +150,6 @@ func TestMarshalEncryptedResponseHello(t *testing.T) {
 }
 
 func TestResponseBasicParams(t *testing.T) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		l, err = net.Listen("tcp6", "[::1]:0")
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open local listener: %v", err)
-		os.Exit(1)
-	}
-	localListener.ch = make(chan net.Conn)
-	localListener.addr = l.Addr()
-	defer l.Close()
-	go localServer(l)
-
-	config := defaultConfig()
-	config.Time = func() time.Time { return time.Unix(0, 0) }
-	config.Rand = zeroSource{}
-	config.Hostname = "example.com"
-	config.SkipCertificateVerification = true
-	config.NextProto = "h2"
-
 	certPem, privPEM := generateTestCert(t, "example.com")
 
 	cp, err := CKIKeyPair(certPem, privPEM)
@@ -183,73 +157,14 @@ func TestResponseBasicParams(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	config := testDefaultConfig()
 	config.Certificates = []CertificatePair{cp}
+	config.NextProto = "h2"
 
-	r, w := localPipe(t) //net.Pipe()
-
-	c := &Conn{
-		conn:   w,
-		config: config,
-	}
-
-	sc := &Conn{
-		conn:   r,
-		config: config,
-	}
-
-	hello, initParams, err := c.makeInitHandshake()
+	cState, scState, err := testHandshake(t, config, config)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	errs := make(chan error)
-
-	ih := &InitHelloState{
-		c:       sc,
-		ctx:     context.Background(),
-		initial: hello,
-		params:  initParams,
-	}
-
-	rh := &ResponseHelloState{
-		c:       c,
-		ctx:     context.Background(),
-		initial: hello,
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		err := ih.handshake()
-		if err != nil {
-			errs <- fmt.Errorf("err on inter: %s", err)
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err = rh.handshake()
-		if err != nil {
-			errs <- fmt.Errorf("err on responder: %s", err)
-		}
-	}()
-
-	go func() {
-		wg.Wait()
-		close(errs)
-	}()
-
-	for err := range errs {
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	cState := c.State()
-	scState := sc.State()
 
 	assert.True(t, cState.HandshakeComplete)
 	assert.True(t, scState.HandshakeComplete)
@@ -259,8 +174,3 @@ func TestResponseBasicParams(t *testing.T) {
 	assert.Equal(t, cState.NextProto, scState.NextProto)
 	assert.Equal(t, config.NextProto, cState.NextProto)
 }
-
-// func testHandshake(t *testing.T, clientConfig, serverConfig *Config) (clientState, serverState *State, err error) {
-
-// 	return
-// }
