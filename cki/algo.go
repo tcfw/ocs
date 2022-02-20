@@ -19,3 +19,20 @@ const (
 
 	algoMax
 )
+
+func (a Algorithm) String() string {
+	switch a {
+	case ED25519:
+		return "ED25519"
+	case ECDSAsecp256r1:
+		return "ECDSA secp256r1"
+	case ECDSAsecp384r1:
+		return "ECDSA secp384r1"
+	case RSA2048:
+		return "RSA 2048"
+	case RSA4096:
+		return "RSA 4096"
+	default:
+		return "unknown"
+	}
+}

@@ -51,7 +51,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 	for _, sig := range c.Signatures {
 		//Skip self signed
 		if bytes.Equal(sig.ID, c.ID) {
-			err = c.verifySignatureOnly(sig.ID, c.publicKey)
+			err = c.VerifySignatureOnly(sig.ID, c.publicKey)
 			if err != nil {
 				return err
 			}
@@ -73,7 +73,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 			return err
 		}
 
-		err = c.verifySignatureOnly(parent.ID, parent.publicKey)
+		err = c.VerifySignatureOnly(parent.ID, parent.publicKey)
 		if err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func verifyPKI(c *Certificate, p CertPool, multi bool) error {
 
 //verifyWOT TODO(tcfw)
 func verifyWOT(c *Certificate, p CertPool) error {
-	return fmt.Errorf("cki: not implemented")
+	return fmt.Errorf("cki: WOT verification currently not implemented")
 }
 
 func MatchesSubject(c *Certificate, s string) error {

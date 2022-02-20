@@ -2,6 +2,8 @@ package cki
 
 import (
 	"bufio"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tcfw/ocs/cki"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -83,20 +86,6 @@ func newCert(cmd *cobra.Command) error {
 		newCmdSubject = newCmdEmail
 	}
 
-	entity, err := readEntity(cmd)
-	if err != nil {
-		return err
-	}
-
-	temp := cki.Certificate{
-		CertType:  certType,
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-		IsCA:      newCmdIsCa,
-		Subject:   newCmdSubject,
-		Entity:    entity,
-	}
-
 	pubk, privk, err := readPubPriv(cmd, "key")
 	if err != nil {
 		return err
@@ -115,6 +104,20 @@ func newCert(cmd *cobra.Command) error {
 		}
 
 		privk = issuerprivk
+	}
+
+	entity, err := readEntity(cmd)
+	if err != nil {
+		return err
+	}
+
+	temp := cki.Certificate{
+		CertType:  certType,
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		IsCA:      newCmdIsCa,
+		Subject:   newCmdSubject,
+		Entity:    entity,
 	}
 
 	c, err := cki.NewCertificate(temp, pubk, issuer, privk)
@@ -168,12 +171,36 @@ func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey
 		return nil, nil, err
 	}
 
+	var pk cki.PrivateKey
+
 	pempk, err := cki.ParsePEMPrivateKey(d)
 	if err != nil {
+		if err == cki.ErrUnknownPEMType {
+			block, _ := pem.Decode(d)
+			if block.Type != cki.PEMEncPrivKeyHeader {
+				return nil, nil, errors.New("unknown priv key PEM encoding")
+			}
+			fmt.Printf("Private Key Password: ")
+			l, err := terminal.ReadPassword(0)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			pk, err = cki.ParseEncryptedPrivateKey(block.Bytes, l)
+			if err != nil {
+				return nil, nil, err
+			}
+			pubk := pk.Public()
+
+			fmt.Println()
+
+			return pubk, pk, nil
+		}
+
 		return nil, nil, err
 	}
 
-	pk, err := cki.ParsePrivateKey(pempk)
+	pk, err = cki.ParsePrivateKey(pempk)
 	if err != nil {
 		return nil, nil, err
 	}

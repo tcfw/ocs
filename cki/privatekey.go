@@ -139,9 +139,9 @@ func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 
 	nonceSize := aead.NonceSize()
 
-	encDst := make([]byte, nonceSize+len(d)+aead.Overhead())
+	nonce := make([]byte, nonceSize)
 
-	n, err := rand.Read(encDst[:nonceSize])
+	n, err := rand.Read(nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +149,8 @@ func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 		return nil, errors.New("nonce read mismatch")
 	}
 
-	aead.Seal(encDst[:nonceSize], encDst[:nonceSize], d, salt)
-
+	encDst := aead.Seal(nil, nonce, d, salt)
+	salt = append(salt, nonce...)
 	salt = append(salt, encDst...)
 
 	return salt, nil
@@ -158,10 +158,6 @@ func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 
 //ParseEncryptedPrivateKey decrypts and decodes a private key using AES256-GCM
 func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
-	if len(key) != 32 {
-		return nil, errors.New("key length should be 32 bytes")
-	}
-
 	salt := d[:saltLen]
 	d = d[saltLen:]
 
@@ -179,9 +175,7 @@ func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
 
 	nonceSize := aead.NonceSize()
 
-	dst := make([]byte, len(d)-nonceSize)
-
-	_, err = aead.Open(dst[:0], d[:nonceSize], d[nonceSize:], salt)
+	dst, err := aead.Open(nil, d[:nonceSize], d[nonceSize:], salt)
 	if err != nil {
 		return nil, err
 	}

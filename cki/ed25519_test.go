@@ -32,7 +32,7 @@ func TestCertFromEd25519(t *testing.T) {
 	assert.Equal(t, cert.Version, uint8(1))
 
 	//Check self sign
-	err = cert.verifySignatureOnly(cert.ID, pub)
+	err = cert.VerifySignatureOnly(cert.ID, pub)
 	if err != nil {
 		t.Fatal(err)
 	}

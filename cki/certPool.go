@@ -163,3 +163,45 @@ func isSameDirSymlink(f fs.DirEntry, dir string) bool {
 	target, err := os.Readlink(filepath.Join(dir, f.Name()))
 	return err == nil && !strings.Contains(target, "/")
 }
+
+func NewIntermCertPool(parent CertPool, certs map[string]*Certificate) *IntermCertPool {
+	if certs == nil {
+		certs = make(map[string]*Certificate)
+	}
+
+	return &IntermCertPool{
+		parentPool: parent,
+		interms:    certs,
+	}
+}
+
+type IntermCertPool struct {
+	parentPool CertPool
+	interms    map[string]*Certificate
+}
+
+func (escp *IntermCertPool) FindCertificate(id, ref []byte) (*Certificate, error) {
+	interm, ok := escp.interms[string(id)]
+	if ok {
+		return interm, nil
+	}
+
+	return escp.parentPool.FindCertificate(id, ref)
+}
+
+func (escp *IntermCertPool) TrustLevel(id []byte) (TrustLevel, error) {
+	cert, err := escp.parentPool.FindCertificate(id, nil)
+	if err == nil && cert != nil {
+		return escp.TrustLevel(id)
+	}
+
+	return UnknownTrust, nil
+}
+
+func (escp *IntermCertPool) IsRevoked(id []byte) error {
+	return escp.parentPool.IsRevoked(id)
+}
+
+func (escp *IntermCertPool) AddCert(c *Certificate) {
+	escp.interms[string(c.ID)] = c
+}

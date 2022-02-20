@@ -13,4 +13,5 @@ func Attach(parent *cobra.Command) {
 	parent.AddCommand(pkCmd)
 	parent.AddCommand(pubCmd)
 	parent.AddCommand(lookupCmd)
+	parent.AddCommand(infoCmd)
 }

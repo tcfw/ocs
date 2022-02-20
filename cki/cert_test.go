@@ -44,7 +44,7 @@ func TestCertFuzz(t *testing.T) {
 	}
 
 	//Check self sign
-	err = cert.verifySignatureOnly(cert.ID, pub)
+	err = cert.VerifySignatureOnly(cert.ID, pub)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,3 +14,14 @@ const (
 	AdditionalSubject
 	Serial
 )
+
+func (et ExtensionType) String() string {
+	switch et {
+	case AdditionalSubject:
+		return "additional subject"
+	case Serial:
+		return "serial"
+	default:
+		return "unknown"
+	}
+}

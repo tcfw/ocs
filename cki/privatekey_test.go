@@ -1,6 +1,7 @@
 package cki
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -102,10 +103,16 @@ func TestMarshalEncryptedPrivateKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	key := []byte(`abcdefghijklmnopqrstuvwxyz123456`)
+	key := []byte(`testingismagic`)
 
 	encK, err := MarshalEncryptedPrivateKey(priv, key)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf := bytes.NewBuffer(nil)
+
+	if err := MarshalPEMRawPrivateKey(encK, buf, true); err != nil {
 		t.Fatal(err)
 	}
 

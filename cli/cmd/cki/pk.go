@@ -50,7 +50,7 @@ func newPk(cmd *cobra.Command) error {
 
 	if password != "" {
 		if password == "-" {
-			fmt.Printf("Password: ")
+			fmt.Printf("Encryption Password: ")
 			l, err := terminal.ReadPassword(0)
 			if err != nil {
 				return err

@@ -48,6 +48,19 @@ const (
 	certTypeMax
 )
 
+func (ct CertificateType) String() string {
+	switch ct {
+	case PKI:
+		return "pki"
+	case MultiPKI:
+		return "multipki"
+	case WOT:
+		return "wot"
+	default:
+		return "unknown"
+	}
+}
+
 //Entity provides personal or businses information in
 //the certificate
 type Entity struct {
@@ -184,6 +197,7 @@ func ParseCertificate(d []byte) (*Certificate, error) {
 }
 
 //ParsePEMCertificate parses a certificate from a PEM block format
+//also returning the next PEM block if available
 func ParsePEMCertificate(d []byte) (*Certificate, []byte, error) {
 	block, rest := pem.Decode(d)
 	if block.Type != PEMCertHeader {
@@ -376,9 +390,9 @@ func (cert *Certificate) verifySignatureMatching(pkID []byte, pubk PublicKey) er
 	return ErrNoMatchingSignatures
 }
 
-//verifySignatureOnly verifies the only 1 signature exists and that that signature matches
+//VerifySignatureOnly verifies the only 1 signature exists and that that signature matches
 //the given public key
-func (cert *Certificate) verifySignatureOnly(pkID []byte, pubk PublicKey) error {
+func (cert *Certificate) VerifySignatureOnly(pkID []byte, pubk PublicKey) error {
 	sigCount := len(cert.Signatures)
 	if sigCount > 1 || sigCount == 0 {
 		return ErrTooManySignatures

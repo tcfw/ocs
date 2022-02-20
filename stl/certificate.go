@@ -349,10 +349,7 @@ func verifyX509Signature(c *Certificate, data []byte) error {
 }
 
 func verifyCKIChain(c *Config, s *Certificate, a []*Certificate) error {
-	escp := &extendedSystemCertPool{
-		systemPool: cki.SystemRootsPool(),
-		interms:    make(map[string]*cki.Certificate, len(a)),
-	}
+	escp := cki.NewIntermCertPool(cki.SystemRootsPool(), make(map[string]*cki.Certificate, len(a)))
 
 	cert, err := cki.ParseCertificate(s.Certificate)
 	if err != nil {
@@ -364,37 +361,10 @@ func verifyCKIChain(c *Config, s *Certificate, a []*Certificate) error {
 		if err != nil {
 			return err
 		}
-		escp.interms[string(c.ID)] = c
+		escp.AddCert(c)
 	}
 
 	return cert.Verify(escp)
-}
-
-type extendedSystemCertPool struct {
-	systemPool cki.CertPool
-	interms    map[string]*cki.Certificate
-}
-
-func (escp *extendedSystemCertPool) FindCertificate(id, ref []byte) (*cki.Certificate, error) {
-	interm, ok := escp.interms[string(id)]
-	if ok {
-		return interm, nil
-	}
-
-	return escp.systemPool.FindCertificate(id, ref)
-}
-
-func (escp *extendedSystemCertPool) TrustLevel(id []byte) (cki.TrustLevel, error) {
-	cert, err := escp.systemPool.FindCertificate(id, nil)
-	if err == nil && cert != nil {
-		return escp.TrustLevel(id)
-	}
-
-	return cki.UnknownTrust, nil
-}
-
-func (escp *extendedSystemCertPool) IsRevoked(id []byte) error {
-	return nil
 }
 
 func verifyX509Chain(c *Config, s *Certificate, a []*Certificate) error {
