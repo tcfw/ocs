@@ -13,6 +13,7 @@ Why am I doing this? To understand X.509 certificates, cryptography and explore 
 See the specs/ for details.
 
 - cki - Certificate and key infrastructure - WIP
+- cli - CLI for creating & managing CKI certificates - WIP
 - cdi - Certificate distribution infrastructure - Research
 - eff - Encrypted file format - Research
 - stl - Secure Transport Layer - Research
