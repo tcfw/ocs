@@ -442,7 +442,7 @@ func privKeyAlgo(priv PrivateKey) Algorithm {
 	case *Ed25519Private:
 		return ED25519
 	case *SecpPrivateKey:
-		return priv.(*SecpPrivateKey).algo
+		return priv.(*SecpPrivateKey).Algo
 	case *RSAPrivateKey:
 		bits := priv.(*RSAPrivateKey).Size() * 8
 		if bits == 2048 {

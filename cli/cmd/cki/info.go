@@ -2,6 +2,7 @@ package cki
 
 import (
 	"bytes"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -45,17 +46,40 @@ func runInfo(cmd *cobra.Command, file string) error {
 	}
 
 	certs := []*cki.Certificate{}
+	keys := []cki.PrivateKey{}
 
 	for len(b) != 0 {
-		c, r, err := cki.ParsePEMCertificate(b)
-		if err != nil {
-			return fmt.Errorf("reading certificate: %s", err)
+		pb, pr := pem.Decode(b)
+		switch pb.Type {
+		case cki.PEMCertHeader:
+			c, r, err := cki.ParsePEMCertificate(b)
+			if err != nil {
+				return fmt.Errorf("reading certificate: %s", err)
+			}
+			certs = append(certs, c)
+
+			cp.AddCert(c)
+			b = r
+		case cki.PEMPrivKeyHeader:
+			pemkey, err := cki.ParsePEMPrivateKey(b)
+			if err != nil {
+				return fmt.Errorf("reading private key: %s", err)
+			}
+			key, err := cki.ParsePrivateKey(pemkey)
+			if err != nil {
+				return fmt.Errorf("parsing private key: %s", err)
+			}
+
+			keys = append(keys, key)
+
+			b = pr
 		}
-		certs = append(certs, c)
 
-		cp.AddCert(c)
+	}
 
-		b = r
+	for _, k := range keys {
+		fmt.Printf("------- Private Key ------\n%s", keyinfo(k))
+		fmt.Printf("--------------------------\n")
 	}
 
 	for _, c := range certs {
@@ -73,6 +97,30 @@ func runInfo(cmd *cobra.Command, file string) error {
 	}
 
 	return nil
+}
+
+func keyinfo(k cki.PrivateKey) string {
+	buf := bytes.NewBuffer(nil)
+
+	switch t := k.(type) {
+	case *cki.SecpPrivateKey:
+		secpkey := k.(*cki.SecpPrivateKey)
+		buf.WriteString("Type: ECC\n")
+		buf.WriteString(fmt.Sprintf("Curve: %s\n", strings.ToUpper(secpkey.Algo.String())))
+	case *cki.Ed25519Private:
+		buf.WriteString("Type: Ed25519\n")
+	case *cki.RSAPrivateKey:
+		rsa := k.(*cki.RSAPrivateKey)
+		buf.WriteString("Type: RSA\n")
+		buf.WriteString(fmt.Sprintf("Bits: %d", rsa.N.BitLen()))
+	default:
+		buf.WriteString(fmt.Sprintf("\n\n!! unknown private key type: %T!!\n\n", t))
+	}
+
+	pbuf, _ := k.Public().Bytes()
+	buf.WriteString(fmt.Sprintf("Public Key: %s\n", hexOut(pbuf)))
+
+	return buf.String()
 }
 
 func info(c *cki.Certificate, cp cki.CertPool) string {

@@ -22,7 +22,7 @@ func GenerateECKey(a Algorithm) (*SecpPublicKey, *SecpPrivateKey, error) {
 		return nil, nil, err
 	}
 
-	privk := &SecpPrivateKey{PrivateKey: *priv, algo: a}
+	privk := &SecpPrivateKey{PrivateKey: *priv, Algo: a}
 	pubk := &SecpPublicKey{PublicKey: priv.PublicKey, algo: a}
 
 	return pubk, privk, nil
@@ -88,7 +88,7 @@ func parseECPrivateKey(k *ocsPrivateKey) (*SecpPrivateKey, error) {
 				Y:     y,
 			},
 		},
-		algo: k.Algo,
+		Algo: k.Algo,
 	}
 
 	return ecPriv, nil
@@ -97,7 +97,7 @@ func parseECPrivateKey(k *ocsPrivateKey) (*SecpPrivateKey, error) {
 //SecpPrivateKey wrapper for ECDSA private keys
 type SecpPrivateKey struct {
 	ecdsa.PrivateKey
-	algo Algorithm
+	Algo Algorithm
 }
 
 //Sign a msg using ECDSA using the key
@@ -108,7 +108,7 @@ func (secpk *SecpPrivateKey) Sign(_ io.Reader, d []byte, _ crypto.SignerOpts) ([
 	}
 
 	sig := &ECDSASignature{
-		Algo: secpk.algo,
+		Algo: secpk.Algo,
 		R:    r.Bytes(),
 		S:    s.Bytes(),
 	}
@@ -130,7 +130,7 @@ func (secpk *SecpPrivateKey) Bytes() ([]byte, error) {
 
 //Public provides the EC public key
 func (secpk *SecpPrivateKey) Public() PublicKey {
-	return &SecpPublicKey{secpk.PrivateKey.PublicKey, secpk.algo}
+	return &SecpPublicKey{secpk.PrivateKey.PublicKey, secpk.Algo}
 }
 
 //SecpPublicKey wrapper for a ECDSA public key
