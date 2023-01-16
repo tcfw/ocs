@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-//PublicKey an OCS compatible public key
+// PublicKey an OCS compatible public key
 type PublicKey interface {
 	crypto.PublicKey
 
@@ -13,7 +13,7 @@ type PublicKey interface {
 	Bytes() ([]byte, error)
 }
 
-//ParsePublicKey unmarshals a public key
+// ParsePublicKey unmarshals a public key
 func ParsePublicKey(a Algorithm, d []byte) (PublicKey, error) {
 	if len(d) == 0 {
 		return nil, errors.New("empty public key")
@@ -21,11 +21,13 @@ func ParsePublicKey(a Algorithm, d []byte) (PublicKey, error) {
 
 	switch a {
 	case ED25519:
-		return parseED25519PublicKey(a, d)
+		return ParseED25519PublicKey(a, d)
 	case ECDSAsecp256r1, ECDSAsecp384r1:
-		return parseECPublicKey(a, d)
+		return ParseECPublicKey(a, d)
 	case RSA2048, RSA4096:
-		return parseRSAPublicKey(a, d)
+		return ParseRSAPublicKey(a, d)
+	case CRYSTALSDilithium2, CRYSTALSDilithium3, CRYSTALSDilithium5:
+		return parseCRYSTALSDilithiumPublicKey(a, d)
 	default:
 		return nil, ErrUnknownKeyAlgorithm
 	}

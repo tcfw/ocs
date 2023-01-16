@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-//GenerateRSAKey generates a new RSA public/private key
+// GenerateRSAKey generates a new RSA public/private key
 func GenerateRSAKey(bits int) (*RSAPublicKey, *RSAPrivateKey, error) {
 	if bits != 2048 && bits != 4096 && bits != 8192 {
 		panic("unsupported bit size")
@@ -26,18 +26,18 @@ func GenerateRSAKey(bits int) (*RSAPublicKey, *RSAPrivateKey, error) {
 	return pub, priv, nil
 }
 
-//RSAPublicKey representation of an RSA public key
+// RSAPublicKey representation of an RSA public key
 type RSAPublicKey struct {
 	rsa.PublicKey
 }
 
-//Bytes encodes the RSA public key to...
-//TODO(tcfw) - encode using msgpack intead of ANSI.1
+// Bytes encodes the RSA public key to...
+// TODO(tcfw) - encode using msgpack intead of ANSI.1
 func (pubk *RSAPublicKey) Bytes() ([]byte, error) {
 	return x509.MarshalPKCS1PublicKey(&pubk.PublicKey), nil
 }
 
-//Verify validates an RSA PKCS1v15 signature based on SHA2-384
+// Verify validates an RSA PKCS1v15 signature based on SHA2-384
 func (pubk *RSAPublicKey) Verify(msg []byte, sig []byte) bool {
 	h := sha512.Sum384(msg)
 
@@ -45,9 +45,9 @@ func (pubk *RSAPublicKey) Verify(msg []byte, sig []byte) bool {
 	return err == nil
 }
 
-//parseRSAPublicKey decodes a RSA public key
-//TODO(tcfw) - decode using msgpack intead of ANSI.1
-func parseRSAPublicKey(a Algorithm, d []byte) (*RSAPublicKey, error) {
+// ParseRSAPublicKey decodes a RSA public key
+// TODO(tcfw) - decode using msgpack intead of ANSI.1
+func ParseRSAPublicKey(a Algorithm, d []byte) (*RSAPublicKey, error) {
 	pubk, err := x509.ParsePKCS1PublicKey(d)
 	if err != nil {
 		return nil, err
@@ -56,8 +56,8 @@ func parseRSAPublicKey(a Algorithm, d []byte) (*RSAPublicKey, error) {
 	return &RSAPublicKey{*pubk}, nil
 }
 
-//ParseRSAPrivateKey decodes an exported RSA private key
-func ParseRSAPrivateKey(k *ocsPrivateKey) (*RSAPrivateKey, error) {
+// parseRSAPrivateKey decodes an exported RSA private key
+func parseRSAPrivateKey(k *ocsPrivateKey) (*RSAPrivateKey, error) {
 	privk, err := x509.ParsePKCS1PrivateKey(k.Key)
 	if err != nil {
 		return nil, err
@@ -66,24 +66,24 @@ func ParseRSAPrivateKey(k *ocsPrivateKey) (*RSAPrivateKey, error) {
 	return &RSAPrivateKey{privk}, nil
 }
 
-//RSAPrivateKey representation of a RSA pivatekey
+// RSAPrivateKey representation of a RSA pivatekey
 type RSAPrivateKey struct {
 	*rsa.PrivateKey
 }
 
-//Sign creates a PKCS1v15 RSA signature of the given byte slice over a SHA2-384 hash
+// Sign creates a PKCS1v15 RSA signature of the given byte slice over a SHA2-384 hash
 func (privk *RSAPrivateKey) Sign(_ io.Reader, d []byte, _ crypto.SignerOpts) ([]byte, error) {
 	h := sha512.Sum384(d)
 
 	return rsa.SignPKCS1v15(rand.Reader, privk.PrivateKey, crypto.SHA384, h[:])
 }
 
-//Bytes encodes the private key into ANSI.1
+// Bytes encodes the private key into ANSI.1
 func (privk *RSAPrivateKey) Bytes() ([]byte, error) {
 	return x509.MarshalPKCS1PrivateKey(privk.PrivateKey), nil
 }
 
-//Public provides the RSA public key
+// Public provides the RSA public key
 func (privk *RSAPrivateKey) Public() PublicKey {
 	return &RSAPublicKey{privk.PrivateKey.PublicKey}
 }

@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-//GenerateECKey generates a new private/public key from a given accepted OCS curve based algorithm
+// GenerateECKey generates a new private/public key from a given accepted OCS curve based algorithm
 func GenerateECKey(a Algorithm) (*SecpPublicKey, *SecpPrivateKey, error) {
 	curve := algoToCurve(a)
 
@@ -39,19 +39,19 @@ func algoToCurve(a Algorithm) elliptic.Curve {
 	}
 }
 
-//ECDSASignature representation of a unpacked ECDSA signature
+// ECDSASignature representation of a unpacked ECDSA signature
 type ECDSASignature struct {
 	Algo Algorithm `msgpack:"a"`
 	R    []byte    `msgpack:"r"`
 	S    []byte    `msgpack:"s"`
 }
 
-//Marshal encode the signature into msgpack encoding
+// Marshal encode the signature into msgpack encoding
 func (sig *ECDSASignature) Marshal() ([]byte, error) {
 	return msgpack.Marshal(sig)
 }
 
-//Unmarshal deecode the signature from msgpack encoding
+// Unmarshal deecode the signature from msgpack encoding
 func (sig *ECDSASignature) Unmarshal(d []byte) error {
 	return msgpack.Unmarshal(d, sig)
 }
@@ -61,7 +61,7 @@ type ecPrivateKey struct {
 	Pub []byte `msgpack:"p"`
 }
 
-//parseECPrivateKey decodes an exported EC private key
+// parseECPrivateKey decodes an exported EC private key
 func parseECPrivateKey(k *ocsPrivateKey) (*SecpPrivateKey, error) {
 	ec := &ecPrivateKey{}
 	err := msgpack.Unmarshal(k.Key, ec)
@@ -94,13 +94,13 @@ func parseECPrivateKey(k *ocsPrivateKey) (*SecpPrivateKey, error) {
 	return ecPriv, nil
 }
 
-//SecpPrivateKey wrapper for ECDSA private keys
+// SecpPrivateKey wrapper for ECDSA private keys
 type SecpPrivateKey struct {
 	ecdsa.PrivateKey
 	Algo Algorithm
 }
 
-//Sign a msg using ECDSA using the key
+// Sign a msg using ECDSA using the key
 func (secpk *SecpPrivateKey) Sign(_ io.Reader, d []byte, _ crypto.SignerOpts) ([]byte, error) {
 	r, s, err := ecdsa.Sign(rand.Reader, &secpk.PrivateKey, d)
 	if err != nil {
@@ -116,7 +116,7 @@ func (secpk *SecpPrivateKey) Sign(_ io.Reader, d []byte, _ crypto.SignerOpts) ([
 	return sig.Marshal()
 }
 
-//Bytes marshals the private key into a compressed ANSI x9.62 encoding
+// Bytes marshals the private key into a compressed ANSI x9.62 encoding
 func (secpk *SecpPrivateKey) Bytes() ([]byte, error) {
 	pk := secpk.PrivateKey
 
@@ -128,19 +128,19 @@ func (secpk *SecpPrivateKey) Bytes() ([]byte, error) {
 	return msgpack.Marshal(ec)
 }
 
-//Public provides the EC public key
+// Public provides the EC public key
 func (secpk *SecpPrivateKey) Public() PublicKey {
 	return &SecpPublicKey{secpk.PrivateKey.PublicKey, secpk.Algo}
 }
 
-//SecpPublicKey wrapper for a ECDSA public key
+// SecpPublicKey wrapper for a ECDSA public key
 type SecpPublicKey struct {
 	ecdsa.PublicKey
 	algo Algorithm
 }
 
-//parseECPublicKey decodes an elliptical curve based public key
-func parseECPublicKey(a Algorithm, d []byte) (*SecpPublicKey, error) {
+// ParseECPublicKey decodes an elliptical curve based public key
+func ParseECPublicKey(a Algorithm, d []byte) (*SecpPublicKey, error) {
 	c := algoToCurve(a)
 	x, y := elliptic.UnmarshalCompressed(c, d)
 
@@ -156,15 +156,15 @@ func parseECPublicKey(a Algorithm, d []byte) (*SecpPublicKey, error) {
 	return pubk, nil
 }
 
-//ID public ID matching the private key PublicID - SHA3-384
+// ID public ID matching the private key PublicID - SHA3-384
 func (secppk *SecpPublicKey) ID() []byte {
 	b, _ := secppk.Bytes()
 	ha := sha3.Sum384(b)
 	return ha[:]
 }
 
-//Verify a signature against a given message using the public key
-//the signature must be in the ECDSASignature msgpack encoding
+// Verify a signature against a given message using the public key
+// the signature must be in the ECDSASignature msgpack encoding
 func (secppk *SecpPublicKey) Verify(msg []byte, sig []byte) bool {
 	ecdsaSig := &ECDSASignature{}
 	err := ecdsaSig.Unmarshal(sig)
@@ -180,7 +180,7 @@ func (secppk *SecpPublicKey) Verify(msg []byte, sig []byte) bool {
 	return ecdsa.Verify(&secppk.PublicKey, msg, r, s)
 }
 
-//Bytes encodes the public key into ANSI X9.62 encoding
+// Bytes encodes the public key into ANSI X9.62 encoding
 func (secppk *SecpPublicKey) Bytes() ([]byte, error) {
 	pk := secppk.PublicKey
 	return elliptic.MarshalCompressed(pk.Curve, pk.X, pk.Y), nil

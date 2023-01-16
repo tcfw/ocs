@@ -9,9 +9,11 @@ require (
 	github.com/ipfs/go-ipfs v0.11.0
 	github.com/ipfs/go-ipfs-config v0.18.0
 	github.com/ipfs/interface-go-ipfs-core v0.5.2
+	github.com/kudelskisecurity/crystals-go v0.0.0-20210705112123-14b89bfbcdc8
 	github.com/libp2p/go-libp2p-core v0.11.0
 	github.com/libp2p/go-libp2p-record v0.1.3
 	github.com/multiformats/go-multihash v0.1.0
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.0
@@ -19,4 +21,5 @@ require (
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 )

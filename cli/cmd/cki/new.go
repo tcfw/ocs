@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tcfw/ocs/cki"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 var (
@@ -181,7 +181,7 @@ func readPubPriv(cmd *cobra.Command, flag string) (cki.PublicKey, cki.PrivateKey
 				return nil, nil, errors.New("unknown priv key PEM encoding")
 			}
 			fmt.Printf("Private Key Password: ")
-			l, err := terminal.ReadPassword(0)
+			l, err := term.ReadPassword(0)
 			if err != nil {
 				return nil, nil, err
 			}

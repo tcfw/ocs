@@ -1,6 +1,6 @@
 package cki
 
-//Algorithm available cryptographic algorithms
+// Algorithm available cryptographic algorithms
 type Algorithm uint16
 
 const (
@@ -16,6 +16,12 @@ const (
 	RSA2048
 	//RSA4096 RSA 4096 bits
 	RSA4096
+	//CRYSTALS-DILITHIUM-2
+	CRYSTALSDilithium2
+	//CRYSTALS-DILITHIUM-3
+	CRYSTALSDilithium3
+	//CRYSTALS-DILITHIUM-5
+	CRYSTALSDilithium5
 
 	algoMax
 )
@@ -32,6 +38,12 @@ func (a Algorithm) String() string {
 		return "RSA 2048"
 	case RSA4096:
 		return "RSA 4096"
+	case CRYSTALSDilithium2:
+		return "CRYSTALS-Dilithium2"
+	case CRYSTALSDilithium3:
+		return "CRYSTALS-Dilithium3"
+	case CRYSTALSDilithium5:
+		return "CRYSTALS-Dilithium5"
 	default:
 		return "unknown"
 	}

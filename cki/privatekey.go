@@ -25,8 +25,10 @@ const (
 	saltLen       = 32
 )
 
-//PrivateKey to create signatures
+// PrivateKey to create signatures
 type PrivateKey interface {
+	crypto.PrivateKey
+
 	Sign(io.Reader, []byte, crypto.SignerOpts) ([]byte, error)
 	Bytes() ([]byte, error)
 	Public() PublicKey
@@ -50,6 +52,8 @@ func (cs *cryptoSigner) Public() crypto.PublicKey {
 		return pk.(*Ed25519Public)
 	case *RSAPublicKey:
 		return &pk.(*RSAPublicKey).PublicKey
+	case *CRYSTALSDilithiumPublic:
+		return pk
 	default:
 		return pk
 	}
@@ -58,7 +62,7 @@ func (cs *cryptoSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOp
 	return cs.p.Sign(rand, digest, opts)
 }
 
-//MarshalPrivateKey encodes a private key into msgpack encoding
+// MarshalPrivateKey encodes a private key into msgpack encoding
 func MarshalPrivateKey(pk PrivateKey) ([]byte, error) {
 	var err error
 	k := &ocsPrivateKey{}
@@ -72,18 +76,18 @@ func MarshalPrivateKey(pk PrivateKey) ([]byte, error) {
 	return msgpack.Marshal(k)
 }
 
-//ocsPrivateKey represntation of a generic private key
+// ocsPrivateKey represntation of a generic private key
 type ocsPrivateKey struct {
 	Algo Algorithm `msgpack:"a"`
 	Key  []byte    `msgpack:"k"`
 }
 
-//Bytes encodes the private key to msgpack encoding
+// Bytes encodes the private key to msgpack encoding
 func (privk *ocsPrivateKey) Bytes() ([]byte, error) {
 	return msgpack.Marshal(privk)
 }
 
-//ParsePrivateKey unmarshals the private key raw data
+// ParsePrivateKey unmarshals the private key raw data
 func ParsePrivateKey(d []byte) (PrivateKey, error) {
 	k := &ocsPrivateKey{}
 
@@ -102,13 +106,15 @@ func ParsePrivateKey(d []byte) (PrivateKey, error) {
 	case ECDSAsecp256r1, ECDSAsecp384r1:
 		return parseECPrivateKey(k)
 	case RSA2048, RSA4096:
-		return ParseRSAPrivateKey(k)
+		return parseRSAPrivateKey(k)
+	case CRYSTALSDilithium2, CRYSTALSDilithium3, CRYSTALSDilithium5:
+		return parseCRYSTALSDilithiumPrivateKey(k)
 	default:
 		return nil, ErrUnknownKeyAlgorithm
 	}
 }
 
-//MarshalEncryptedPrivateKey encodes and encryps a private key with AES-256-GCM
+// MarshalEncryptedPrivateKey encodes and encryps a private key with AES-256-GCM
 func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 	if len(key) < 8 {
 		return nil, errors.New("key length should be at least 8 character")
@@ -156,7 +162,7 @@ func MarshalEncryptedPrivateKey(pk PrivateKey, key []byte) ([]byte, error) {
 	return salt, nil
 }
 
-//ParseEncryptedPrivateKey decrypts and decodes a private key using AES256-GCM
+// ParseEncryptedPrivateKey decrypts and decodes a private key using AES256-GCM
 func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
 	salt := d[:saltLen]
 	d = d[saltLen:]
@@ -183,7 +189,7 @@ func ParseEncryptedPrivateKey(d []byte, key []byte) (PrivateKey, error) {
 	return ParsePrivateKey(dst)
 }
 
-//MarshalPEMRawPrivateKey encodes a marshalled private key to PEM format
+// MarshalPEMRawPrivateKey encodes a marshalled private key to PEM format
 func MarshalPEMRawPrivateKey(d []byte, w io.Writer, encrypted bool) error {
 	bType := PEMPrivKeyHeader
 
@@ -195,13 +201,13 @@ func MarshalPEMRawPrivateKey(d []byte, w io.Writer, encrypted bool) error {
 	return pem.Encode(w, b)
 }
 
-//MarshalPEMPrivateKey encodes a private key to PEM format
+// MarshalPEMPrivateKey encodes a private key to PEM format
 func MarshalPEMPrivateKey(d []byte) []byte {
 	b := &pem.Block{Type: PEMPrivKeyHeader, Bytes: d}
 	return pem.EncodeToMemory(b)
 }
 
-//ParsePEMPrivateKey parses a non-encrypted PEM encoded file
+// ParsePEMPrivateKey parses a non-encrypted PEM encoded file
 func ParsePEMPrivateKey(d []byte) ([]byte, error) {
 	b, _ := pem.Decode(d)
 
